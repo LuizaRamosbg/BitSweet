@@ -1,0 +1,23 @@
+2026-05-26T21:20:47+02:00 - Creation of dynamic property EncomendaController::$clienteModel is deprecated
+#0 C:\xampp\htdocs\PHP_confeitaria\controllers\EncomendaController.php(13): {closure}(8192, 'Creation of dyn...', 'C:\\xampp\\htdocs...', 13)
+#1 C:\xampp\htdocs\PHP_confeitaria\api\encomendas.php(34): EncomendaController->__construct(Object(PDO))
+#2 {main}
+
+2026-05-26T21:20:47+02:00 - Creation of dynamic property EncomendaController::$clienteModel is deprecated
+#0 C:\xampp\htdocs\PHP_confeitaria\controllers\EncomendaController.php(13): {closure}(8192, 'Creation of dyn...', 'C:\\xampp\\htdocs...', 13)
+#1 C:\xampp\htdocs\PHP_confeitaria\api\encomendas.php(34): EncomendaController->__construct(Object(PDO))
+#2 {main}
+
+2026-05-26T21:21:05+02:00 - Creation of dynamic property EncomendaController::$clienteModel is deprecated
+#0 C:\xampp\htdocs\PHP_confeitaria\controllers\EncomendaController.php(13): {closure}(8192, 'Creation of dyn...', 'C:\\xampp\\htdocs...', 13)
+#1 C:\xampp\htdocs\PHP_confeitaria\api\encomendas.php(34): EncomendaController->__construct(Object(PDO))
+#2 {main}
+
+2026-05-26T21:23:02+02:00 - SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`confeitaria_db`.`encomendas`, CONSTRAINT `encomendas_ibfk_1` FOREIGN KEY (`receita_id`) REFERENCES `receitas` (`id`))
+#0 C:\xampp\htdocs\PHP_confeitaria\models\Encomenda.php(199): PDOStatement->execute()
+#1 C:\xampp\htdocs\PHP_confeitaria\controllers\EncomendaController.php(140): Encomenda->atualizar()
+#2 C:\xampp\htdocs\PHP_confeitaria\controllers\Controller.php(24): EncomendaController->handlePut()
+#3 C:\xampp\htdocs\PHP_confeitaria\controllers\EncomendaController.php(18): Controller->dispatch(Array)
+#4 C:\xampp\htdocs\PHP_confeitaria\api\encomendas.php(35): EncomendaController->handle()
+#5 {main}
+

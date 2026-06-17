@@ -1,0 +1,16 @@
+name: php_confeitaria_flutter
+description: Frontend Flutter para o sistema de gestão de confeitaria.
+publish_to: 'none'
+version: 0.1.0+1
+environment:
+  sdk: '>=2.18.0 <3.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  provider: ^6.0.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true
