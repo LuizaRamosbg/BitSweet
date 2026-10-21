@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titulo %}Cliente{% endblock %}
+{% block conteudo %}
+<h2>{{ 'Editar cliente' if c else 'Novo cliente' }}</h2>
+<form method="post" class="formulario">
+  <div class="row-campos">
+    <label class="form-group">Nome<input class="form-control" name="nome" required value="{{ c['nome'] if c else '' }}"></label>
+    <label class="form-group">Telefone / WhatsApp<input class="form-control" name="telefone" value="{{ c['telefone'] or '' if c else '' }}"></label>
+    <label class="form-group">E-mail<input class="form-control" name="email" type="email" value="{{ c['email'] or '' if c else '' }}"></label>
+    <label class="form-group">Endereço de entrega<input class="form-control" name="endereco" value="{{ c['endereco'] or '' if c else '' }}"></label>
+  </div>
+  <label class="form-group">Observações<textarea class="form-control" name="observacoes" rows="3">{{ c['observacoes'] or '' if c else '' }}</textarea></label>
+  <div class="acoes"><button class="btn">Salvar</button><a class="btn btn-secundario" href="{{ url_for('clientes') }}">Cancelar</a></div>
+</form>
+{% endblock %}

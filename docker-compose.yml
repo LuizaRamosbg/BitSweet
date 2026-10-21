@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - BITSWEET_DB_PATH=/app/data/bitsweet.db
+      - HOST=0.0.0.0
+      - FLASK_DEBUG=0
+    restart: unless-stopped

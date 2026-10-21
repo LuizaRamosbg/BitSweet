@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block titulo %}Relatórios{% endblock %}
+{% block conteudo %}
+<h2>Relatórios e indicadores</h2>
+<form method="get" class="formulario" style="display:flex;flex-wrap:wrap;align-items:end;gap:12px">
+  <label class="form-group">De<input class="form-control" type="date" name="inicio" value="{{ inicio }}"></label>
+  <label class="form-group">Até<input class="form-control" type="date" name="fim" value="{{ fim }}"></label>
+  <button class="btn">Aplicar período</button>
+</form>
+
+<h3>Lucratividade</h3>
+<div class="cards">
+  <div class="card-dashboard"><span>Receita</span><h2>{{ lucro.receita|reais }}</h2></div>
+  <div class="card-dashboard"><span>Custo</span><h2>{{ lucro.custo|reais }}</h2></div>
+  <div class="card-dashboard"><span>Lucro</span><h2>{{ lucro.lucro|reais }}</h2></div>
+  <div class="card-dashboard"><span>Margem</span><h2>{{ lucro.margem|num(1) }}%</h2></div>
+  <div class="card-dashboard"><span>Recebido no período</span><h2>{{ lucro.recebido|reais }}</h2></div>
+</div>
+{% if lucro.por_produto %}
+<h3>Vendas e margem por produto</h3>
+<div style="height:320px;max-width:100%"><canvas id="lucratividadeChart" aria-label="Gráfico de receita, lucro e margem por produto"></canvas></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const prods = {{ lucro.por_produto|tojson }};
+new Chart(document.getElementById('lucratividadeChart'), {
+    type: 'bar',
+    data: {labels: prods.map(p => p.produto), datasets: [
+        {type: 'bar', label: 'Receita (R$)', data: prods.map(p => p.receita / 100), backgroundColor: '#f4a300'},
+        {type: 'bar', label: 'Lucro (R$)', data: prods.map(p => p.lucro / 100), backgroundColor: '#27724e'},
+        {type: 'line', label: 'Margem (%)', data: prods.map(p => +p.margem.toFixed(2)), borderColor: '#a52b2b', yAxisID: 'margem'}
+    ]},
+    options: {responsive: true, maintainAspectRatio: false, scales: {
+        margem: {type: 'linear', position: 'right', grid: {drawOnChartArea: false}}
+    }}
+});
+</script>
+{% endif %}
+<h3>Lucratividade por produto</h3>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Receita</th><th class="num">Custo</th><th class="num">Lucro</th><th class="num">Margem</th></tr>
+{% for p in lucro.por_produto %}
+<tr><td>{{ p['produto'] }}</td><td class="num">{{ p['quantidade']|num(0) }}</td><td class="num">{{ p['receita']|reais }}</td>
+<td class="num">{{ p['custo']|reais }}</td><td class="num">{{ p['lucro']|reais }}</td><td class="num">{{ p['margem']|num(1) }}%</td></tr>
+{% else %}<tr><td colspan="6" class="texto-suave">Sem vendas no período.</td></tr>{% endfor %}
+</table></div>
+<div class="card-dashboard">
+  <h3>Receita × lucro por mês</h3>
+  {% if lucro.por_mes %}
+  <table class="table">{% for m in lucro.por_mes %}<tr><td>{{ m['mes'] }}</td><td class="num">{{ m['receita']|reais }}</td><td class="num">lucro {{ m['lucro']|reais }}</td></tr>{% endfor %}</table>
+  {% else %}<p class="texto-suave">Sem dados.</p>{% endif %}
+</div>
+
+<h3>Consumo de insumos</h3>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Insumo</th><th class="num">Consumido</th><th class="num">Custo consumido</th><th class="num">Saldo</th><th class="num">Cobertura (dias)</th><th class="num">Sugestão de compra</th></tr>
+{% for i in consumo['insumos'] %}
+<tr><td><a href="{{ url_for('insumo_detalhe', iid=i['id']) }}">{{ i['nome'] }}</a></td>
+<td class="num">{{ i['consumido']|num(1) }} {{ i['unidade_base'] }}</td><td class="num">{{ i['custo_consumido']|reais }}</td>
+<td class="num">{{ i['saldo']|num(1) }}</td>
+<td class="num">{{ i['dias_cobertura']|num(0) if i['dias_cobertura'] is not none else '—' }}</td>
+<td class="num">{{ i['sugestao_compra']|num(0) if i['sugestao_compra'] > 0 else '—' }}</td></tr>
+{% endfor %}
+</table></div>
+<p class="texto-suave">Sugestão = consumo médio de 30 dias + estoque mínimo − saldo atual.</p>
+
+<h3>KPIs de produtividade</h3>
+<div class="cards">
+  <div class="card-dashboard"><span>Encomendas</span><h2>{{ kpis.encomendas }}</h2></div>
+  <div class="card-dashboard"><span>Taxa de conclusão</span><h2>{{ kpis.taxa_conclusao|num(0) }}%</h2></div>
+  <div class="card-dashboard"><span>Cancelamentos</span><h2>{{ kpis.taxa_cancelamento|num(1) }}%</h2></div>
+  <div class="card-dashboard"><span>No prazo</span><h2>{{ kpis.pontualidade|num(0) if kpis.pontualidade is not none else '—' }}{{ '%' if kpis.pontualidade is not none }}</h2></div>
+  <div class="card-dashboard"><span>Dias pedido → entrega</span><h2>{{ kpis.lead_time_dias|num(1) if kpis.lead_time_dias is not none else '—' }}</h2></div>
+  <div class="card-dashboard"><span>Porções/dia produzidas</span><h2>{{ kpis.porcoes_por_dia|num(1) }}</h2></div>
+</div>
+<div class="card-dashboard">
+  <h3>Mais vendidos</h3>
+  <table class="table">{% for p in kpis.mais_vendidos %}<tr><td>{{ loop.index }}. {{ p['produto'] }}</td><td class="num">{{ p['quantidade']|num(0) }} {{ p['unidade'] }}</td><td class="num">{{ p['pedidos'] }} pedidos</td></tr>
+  {% else %}<tr><td class="texto-suave">Sem vendas no período.</td></tr>{% endfor %}</table>
+</div>
+
+<h3>Exportar</h3>
+<div class="card-dashboard acoes">
+  {% for t, nome in [('lucratividade','Lucratividade'), ('consumo','Consumo'), ('kpis','KPIs')] %}
+    <a class="btn btn-secundario btn-peq" href="{{ url_for('relatorio_exportar', tipo=t, fmt='csv', inicio=inicio, fim=fim) }}">{{ nome }} · CSV</a>
+    <a class="btn btn-secundario btn-peq" href="{{ url_for('relatorio_exportar', tipo=t, fmt='pdf', inicio=inicio, fim=fim) }}">{{ nome }} · PDF</a>
+  {% endfor %}
+</div>
+{% endblock %}

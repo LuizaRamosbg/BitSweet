@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Clientes{% endblock %}
+{% block conteudo %}
+<div class="acoes" style="justify-content:space-between"><h2 style="margin:0">Clientes</h2>
+  <a class="btn" href="{{ url_for('cliente_form') }}">+ Novo cliente</a></div>
+<form method="get" class="acoes"><input class="form-control" name="q" value="{{ busca }}" placeholder="Buscar por nome, telefone ou e-mail" style="max-width:380px"><button class="btn btn-secundario">Buscar</button></form>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Nome</th><th>Contato</th><th class="num">Encomendas</th><th class="num">Total gasto</th><th>Última</th></tr>
+{% for c in clientes %}
+<tr><td><a href="{{ url_for('cliente_detalhe', cid=c['id']) }}">{{ c['nome'] }}</a></td>
+<td>{{ c['telefone'] or '' }} {{ c['email'] or '' }}</td>
+<td class="num">{{ c['total_encomendas'] }}</td><td class="num">{{ c['total_gasto']|reais }}</td>
+<td>{{ c['ultima_encomenda']|data }}</td></tr>
+{% else %}<tr><td colspan="5" class="texto-suave">Nenhum cliente encontrado.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

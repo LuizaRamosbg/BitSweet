@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}{{ c['receita']['nome'] }}{% endblock %}
+{% block conteudo %}
+{% set r = c['receita'] %}
+<h2>{{ r['nome'] }} <span class="texto-suave">· rende {{ r['rendimento']|num(0) }} {{ r['unidade_rendimento'] }}</span></h2>
+<div class="acoes">
+  <a class="btn btn-secundario btn-peq" href="{{ url_for('receita_editar', rid=r['id']) }}">Editar ficha</a>
+</div>
+
+<div class="cards">
+  <div class="card-dashboard"><span>Custo total do lote</span><h2>{{ c['custo_total']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Custo por porção</span><h2>{{ c['custo_porcao']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Preço de venda {{ '(definido)' if c['preco_definido_manual'] else '(sugerido)' }}</span><h2>{{ c['preco_venda']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Margem real · CMV {{ c['cmv_real']|num(1) }}%</span><h2>{{ c['margem_real']|num(1) }}%</h2></div>
+</div>
+
+<div class="card-dashboard">
+  <h3>Sugestões de preço</h3>
+  <p>Por markup de <b>{{ r['margem_lucro']|num(0) }}%</b> sobre o custo: <b>{{ c['preco_sugerido_margem']|reais }}</b></p>
+  <p>Para CMV de <b>{{ r['cmv_alvo']|num(0) }}%</b>: <b>{{ c['preco_sugerido_cmv']|reais }}</b></p>
+  <p class="texto-suave">Lucro por porção: {{ c['lucro_porcao']|reais }}</p>
+</div>
+
+<h3>Ficha técnica</h3>
+<div class="tabela-dashboard">
+<table class="table">
+<tr><th>Item</th><th>Tipo</th><th class="num">Quantidade</th><th class="num">Custo unit.</th><th class="num">Custo</th><th class="num">Disponível</th></tr>
+{% for it in c['itens'] %}
+<tr><td>{{ it['nome'] }}</td><td>{{ it['tipo'] }}</td><td class="num">{{ it['quantidade']|num(2) }} {{ it['unidade_base'] }}</td>
+<td class="num">{{ custo_unit(it['custo_medio_centavos'], it['unidade_base']) }}</td>
+<td class="num">{{ it['custo_centavos']|reais }}</td>
+<td class="num">{% if it['disponivel'] + 0.000001 < it['quantidade'] %}<span class="selo selo-alerta">falta</span>{% endif %}{{ it['disponivel']|num(1) }}</td></tr>
+{% endfor %}
+{% for e in c['extras'] %}
+<tr><td>{{ e['descricao'] }}</td><td>custo extra</td><td></td><td></td><td class="num">{{ e['valor_centavos']|reais }}</td><td></td></tr>
+{% endfor %}
+<tr><th colspan="4">Total do lote</th><th class="num">{{ c['custo_total']|reais }}</th><th></th></tr>
+</table></div>
+
+<div class="card-dashboard">
+  <h3>Produzir</h3>
+  <p class="texto-suave">Baixa automaticamente os insumos do estoque. Se faltar algum, nada é baixado.</p>
+  <form method="post" action="{{ url_for('receita_produzir', rid=r['id']) }}" class="formulario" style="padding:0;border:0">
+    <div class="row-campos">
+      <label class="form-group">Modo<select class="form-control" name="modo"><option value="lotes">Lotes da receita</option><option value="porcoes">Porções</option></select></label>
+      <label class="form-group">Quantidade<input class="form-control" name="quantidade" value="1" inputmode="decimal"></label>
+    </div>
+    <button class="btn">Registrar produção</button>
+  </form>
+</div>
+<form method="post" action="{{ url_for('receita_excluir', rid=r['id']) }}" onsubmit="return confirm('Excluir esta receita?')">
+  <button class="btn btn-perigo btn-peq">Excluir receita</button>
+</form>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}Encomendas{% endblock %}
+{% block conteudo %}
+<div class="acoes" style="justify-content:space-between"><h2 style="margin:0">Encomendas</h2>
+  <a class="btn" href="{{ url_for('encomenda_nova') }}">+ Nova encomenda</a></div>
+<div class="acoes">
+  <a class="btn btn-secundario btn-peq {{ 'ativo' if not status_sel }}" href="{{ url_for('encomendas') }}">Todas</a>
+  {% for s in status_todos %}<a class="btn btn-secundario btn-peq {{ 'ativo' if status_sel == s }}" href="{{ url_for('encomendas', status=s) }}">{{ s }}</a>{% endfor %}
+</div>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>#</th><th>Cliente</th><th>Entrega</th><th>Status</th><th>Pagamento</th><th class="num">Valor</th></tr>
+{% for e in encomendas %}
+<tr><td><a href="{{ url_for('encomenda_detalhe', eid=e['id']) }}">{{ e['id'] }}</a></td>
+<td>{{ e['cliente_nome'] }}</td><td>{{ e['data_entrega_prevista']|data }}</td>
+<td><span class="selo">{{ e['status'] }}</span></td><td>{{ e['status_pagamento'] }}</td>
+<td class="num">{{ e['valor_total_centavos']|reais }}</td></tr>
+{% else %}<tr><td colspan="6" class="texto-suave">Nenhuma encomenda.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

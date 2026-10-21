@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Produções{% endblock %}
+{% block conteudo %}
+<h2>Produções</h2>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Data</th><th>Receita</th><th class="num">Lotes</th><th class="num">Porções</th><th class="num">Custo</th><th>Origem</th></tr>
+{% for p in producoes %}
+<tr><td>{{ p['data']|data }}</td><td><a href="{{ url_for('receita_detalhe', rid=p['receita_id']) }}">{{ p['nome'] }}</a></td>
+<td class="num">{{ p['lotes']|num(2) }}</td><td class="num">{{ p['porcoes']|num(1) }}</td>
+<td class="num">{{ p['custo_centavos']|reais }}</td>
+<td>{% if p['encomenda_id'] %}<a href="{{ url_for('encomenda_detalhe', eid=p['encomenda_id']) }}">encomenda #{{ p['encomenda_id'] }}</a>{% else %}produção avulsa{% endif %}</td></tr>
+{% else %}<tr><td colspan="6" class="texto-suave">Nenhuma produção registrada.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

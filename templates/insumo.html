@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block titulo %}{{ i['nome'] }}{% endblock %}
+{% block conteudo %}
+<h2>{{ i['nome'] }} <span class="selo">{{ i['tipo'] }}</span>{% if not i['ativo'] %}<span class="selo selo-alerta">inativo</span>{% endif %}</h2>
+<div class="cards">
+  <div class="card-dashboard"><span>Disponível (dentro da validade)</span><h2>{{ disponivel|num(1) }} {{ i['unidade_base'] }}</h2></div>
+  {% if i['saldo'] - disponivel > 0.000001 %}<div class="card-dashboard"><span>Em lotes vencidos</span><h2 style="color:#a52b2b">{{ (i['saldo'] - disponivel)|num(1) }} {{ i['unidade_base'] }}</h2></div>{% endif %}
+  <div class="card-dashboard"><span>Custo médio</span><h2>{{ custo_unit(i['custo_medio_centavos'], i['unidade_base']) }}</h2></div>
+  <div class="card-dashboard"><span>Estoque mínimo</span><h2>{{ i['estoque_minimo']|num(1) }} {{ i['unidade_base'] }}</h2></div>
+</div>
+
+<h3>Lotes</h3>
+<p class="texto-suave">Ordem de consumo: primeiro o lote que vence antes (FEFO). Lotes vencidos não são usados na produção; descarte-os para tirar do estoque.</p>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Ordem</th><th>Lote</th><th>Entrada</th><th>Validade</th><th class="num">Saldo</th><th class="num">Custo</th><th>Situação</th><th></th></tr>
+{% set ns = namespace(ordem=0) %}
+{% for l in lotes %}
+{% set d = dias_ate(l['validade']) %}
+<tr>
+  <td>{% if l['saldo'] > 0 and (d is none or d >= 0) %}{% set ns.ordem = ns.ordem + 1 %}{{ ns.ordem }}º{% else %}—{% endif %}</td>
+  <td>{{ l['codigo'] or ('#' ~ l['id']) }}</td>
+  <td>{{ l['data_entrada']|data }}</td>
+  <td>{{ l['validade']|data if l['validade'] else 'Sem validade' }}</td>
+  <td class="num">{{ l['saldo']|num(2) }} / {{ l['quantidade_inicial']|num(2) }} {{ i['unidade_base'] }}</td>
+  <td class="num">{{ custo_unit(l['custo_unit_centavos'], i['unidade_base']) }}</td>
+  <td>{% if l['saldo'] <= 0 %}<span class="selo">Esgotado</span>
+      {% elif d is none %}<span class="selo selo-ok">OK</span>
+      {% elif d < 0 %}<span class="selo selo-alerta">Vencido há {{ -d }} dia(s)</span>
+      {% elif d <= 7 %}<span class="selo selo-alerta">{{ 'Vence hoje' if d == 0 else 'Vence em ' ~ d ~ ' dia(s)' }}</span>
+      {% else %}<span class="selo selo-ok">OK · {{ d }} dias</span>{% endif %}</td>
+  <td>{% if l['saldo'] > 0 %}<form method="post" action="{{ url_for('lote_descartar', lid=l['id']) }}" onsubmit="return confirm('Descartar todo o saldo deste lote?')">
+      <button class="btn {{ 'btn-perigo' if d is not none and d < 0 else 'btn-secundario' }} btn-peq">Descartar</button></form>{% endif %}</td>
+</tr>
+{% else %}<tr><td colspan="8" class="texto-suave">Nenhum lote com saldo. Registre uma compra para dar entrada.</td></tr>{% endfor %}
+</table></div>
+<div class="acoes"><a class="btn btn-secundario btn-peq" href="{{ url_for('insumo_detalhe', iid=i['id'], esgotados=0 if mostrar_esgotados else 1) }}">{{ 'Ocultar lotes esgotados' if mostrar_esgotados else 'Mostrar lotes esgotados' }}</a>
+  <a class="btn btn-peq" href="{{ url_for('compras', insumo=i['id']) }}">+ Registrar compra</a></div>
+
+<div class="card-dashboard">
+  <h3>Editar cadastro</h3>
+  <form method="post" action="{{ url_for('insumo_editar', iid=i['id']) }}" class="formulario" style="padding:0;border:0">
+    <div class="row-campos">
+      <label class="form-group">Nome<input class="form-control" name="nome" value="{{ i['nome'] }}" required></label>
+      <label class="form-group">Tipo<select class="form-control" name="tipo">{% for t in tipos %}<option {{ 'selected' if t == i['tipo'] }}>{{ t }}</option>{% endfor %}</select></label>
+      <label class="form-group">Unidade base<select class="form-control" name="unidade_base">{% for u in unidades %}<option {{ 'selected' if u == i['unidade_base'] }}>{{ u }}</option>{% endfor %}</select></label>
+      <label class="form-group">Estoque mínimo<input class="form-control" name="estoque_minimo" value="{{ i['estoque_minimo'] }}" inputmode="decimal"></label>
+    </div>
+    <button class="btn btn-secundario">Salvar</button>
+  </form>
+</div>
+
+<div class="card-dashboard">
+  <h3>Ajuste de inventário</h3>
+  <p class="texto-suave">Use após contagem física. A diferença fica registrada no histórico.</p>
+  <form method="post" action="{{ url_for('insumo_ajuste', iid=i['id']) }}" class="formulario" style="padding:0;border:0">
+    <div class="row-campos">
+      <label class="form-group">Saldo contado ({{ i['unidade_base'] }})<input class="form-control" name="saldo" value="{{ i['saldo'] }}" inputmode="decimal"></label>
+      <label class="form-group">Motivo<input class="form-control" name="motivo" value="Ajuste de inventário"></label>
+    </div>
+    <button class="btn btn-secundario">Ajustar saldo</button>
+  </form>
+</div>
+
+<h3>Compras</h3>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Data</th><th>Embalagens</th><th>Lote / validade</th><th>Fornecedor</th><th class="num">Preço total</th><th class="num">Custo por {{ i['unidade_base'] }}</th></tr>
+{% for c in compras %}
+<tr><td>{{ c['data']|data }}</td><td>{{ c['qtd_embalagens']|num(0) }} × {{ c['tamanho_embalagem']|num(0) }} {{ c['unidade_embalagem'] }}</td>
+<td>{{ c['codigo'] or '—' }}{% if c['validade'] %} · {{ c['validade']|data }}{% endif %}</td><td>{{ c['fornecedor'] or '—' }}</td><td class="num">{{ c['preco_total_centavos']|reais }}</td>
+<td class="num">{{ custo_unit(c['preco_total_centavos'] / c['quantidade_base'], i['unidade_base']) }}</td></tr>
+{% else %}<tr><td colspan="6" class="texto-suave">Nenhuma compra registrada.</td></tr>{% endfor %}
+</table></div>
+
+<h3>Movimentações</h3>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Data</th><th>Origem</th><th>Lote</th><th class="num">Quantidade</th><th>Observação</th></tr>
+{% for m in movs %}
+<tr><td>{{ m['data']|data }}</td><td>{{ m['origem'] }}</td><td>{% if m['lote_id'] %}{{ m['lote_codigo'] or ('#' ~ m['lote_id']) }}{% if m['lote_validade'] %} <span class="texto-suave">· val. {{ m['lote_validade']|data }}</span>{% endif %}{% else %}—{% endif %}</td><td class="num">{{ '+' if m['quantidade'] > 0 }}{{ m['quantidade']|num(2) }}</td><td>{{ m['observacao'] or '' }}</td></tr>
+{% else %}<tr><td colspan="5" class="texto-suave">Sem movimentações.</td></tr>{% endfor %}
+</table></div>
+
+<form method="post" action="{{ url_for('insumo_excluir', iid=i['id']) }}" onsubmit="return confirm('Excluir ou desativar este insumo?')">
+  <button class="btn btn-perigo btn-peq">Excluir / desativar</button>
+</form>
+{% endblock %}

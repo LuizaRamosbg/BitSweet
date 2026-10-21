@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Nova encomenda{% endblock %}
+{% block conteudo %}
+<h2>Nova encomenda</h2>
+{% if not clientes %}
+  <div class="card-dashboard">Cadastre um cliente antes. <a href="{{ url_for('cliente_form') }}">Novo cliente</a></div>
+{% else %}
+<form method="post" class="formulario">
+  <div class="row-campos">
+    <label class="form-group">Cliente<select class="form-control" name="cliente_id" required>
+      {% for c in clientes %}<option value="{{ c['id'] }}" {{ 'selected' if cliente_sel == c['id'] }}>{{ c['nome'] }}</option>{% endfor %}
+    </select></label>
+    <label class="form-group">Data do pedido<input class="form-control" type="date" name="data_pedido" value="{{ hoje }}"></label>
+    <label class="form-group">Data de entrega<input class="form-control" type="date" name="data_entrega"></label>
+  </div>
+  <h3>Produtos</h3>
+  <div id="lista-itens">
+    <div class="item-encomenda">
+      <select class="form-control" name="item_receita" aria-label="Produto"><option value="">Selecione um produto</option>
+        {% for r in receitas %}<option value="{{ r['receita']['id'] }}">{{ r['receita']['nome'] }} · {{ r['preco_venda']|reais }} / {{ r['receita']['unidade_rendimento'] }}</option>{% endfor %}
+      </select>
+      <input class="form-control" name="item_qtd" inputmode="decimal" placeholder="Quantidade (porções)" aria-label="Quantidade">
+      <button type="button" class="btn icon-button" aria-label="Remover item" title="Remover item" onclick="removerItem(this)">-</button>
+    </div>
+  </div>
+  <button type="button" class="btn" onclick="adicionarItem()">+ Adicionar produto</button>
+  <p class="texto-suave">O valor é calculado pelo preço de venda de cada produto. Os preços ficam congelados neste pedido.</p>
+  <label class="form-group">Observações<textarea class="form-control" name="observacoes" rows="2"></textarea></label>
+  <div class="acoes"><button class="btn">Registrar encomenda</button>
+    <a class="btn btn-secundario" href="{{ url_for('encomendas') }}">Cancelar</a></div>
+</form>
+{% endif %}
+<script>
+function adicionarItem() {
+    const lista = document.getElementById('lista-itens');
+    const nova = lista.firstElementChild.cloneNode(true);
+    nova.querySelector('select').value = ''; nova.querySelector('input').value = '';
+    lista.appendChild(nova); nova.querySelector('select').focus();
+}
+function removerItem(botao) {
+    const lista = document.getElementById('lista-itens'), linha = botao.closest('.item-encomenda');
+    if (lista.children.length > 1) linha.remove();
+    else linha.querySelectorAll('input, select').forEach(c => c.value = '');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block titulo %}Receita{% endblock %}
+{% block conteudo %}
+{% set editando = calc is not none %}
+{% set r = calc['receita'] if editando else {} %}
+<h2>{{ 'Editar receita' if editando else 'Nova receita' }}</h2>
+<form method="post" class="formulario">
+  <div class="row-campos">
+    <label class="form-group">Nome do produto<input class="form-control" name="nome" required value="{{ r['nome'] or '' }}" placeholder="Ex.: Brigadeiro gourmet"></label>
+    <label class="form-group">Rendimento (quantidade)<input class="form-control" name="rendimento" inputmode="decimal" required value="{{ r['rendimento'] or '1' }}" placeholder="Ex.: 20"></label>
+    <label class="form-group">Unidade do rendimento<input class="form-control" name="unidade_rendimento" value="{{ r['unidade_rendimento'] or 'porção' }}" placeholder="fatia, unidade, bolo..."></label>
+  </div>
+  <div class="row-campos">
+    <label class="form-group">Margem de lucro (%) <span class="texto-suave">— markup sobre o custo</span><input class="form-control" name="margem_lucro" inputmode="decimal" value="{{ r['margem_lucro'] if editando else 100 }}"></label>
+    <label class="form-group">CMV alvo (%) <span class="texto-suave">— custo ÷ preço</span><input class="form-control" name="cmv_alvo" inputmode="decimal" value="{{ r['cmv_alvo'] if editando else 35 }}"></label>
+    <label class="form-group">Preço de venda por porção (opcional)<input class="form-control" name="preco_venda" inputmode="decimal" value="{{ (r['preco_venda_centavos'] / 100)|num(2) if editando and r['preco_venda_centavos'] is not none }}" placeholder="vazio = sugerido"></label>
+  </div>
+
+  <h3>Insumos e embalagens</h3>
+  {% set itens = calc['itens'] if editando else [] %}
+  <div id="lista-insumos">
+    {% for it in (itens or [none]) %}
+    <div class="ingrediente-row">
+      <select class="form-control" name="item_insumo" aria-label="Insumo" onchange="mostrarUnidade(this)">
+        <option value="">Selecione um insumo</option>
+        {% for i in insumos %}<option value="{{ i['id'] }}" data-unidade="{{ i['unidade_base'] }}" {{ 'selected' if it and it['insumo_id'] == i['id'] }}>{{ i['nome'] }}</option>{% endfor %}
+      </select>
+      <input class="form-control" name="item_qtd" inputmode="decimal" placeholder="Quantidade" aria-label="Quantidade" value="{{ it['quantidade']|num(2) if it }}">
+      <span class="ingredient-unit">{{ it['unidade_base'] if it else '' }}</span>
+      <button type="button" class="btn icon-button" aria-label="Remover insumo" title="Remover insumo" onclick="removerLinha(this, 'lista-insumos')">-</button>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn" onclick="adicionarLinha('lista-insumos')">+ Adicionar insumo</button>
+  <small class="form-hint">Quantidade na unidade do insumo (g, ml ou un). Ex.: 300 para 300 g.</small>
+
+  <h3>Custos extras</h3>
+  {% set extras = calc['extras'] if editando else [] %}
+  <div id="lista-extras">
+    {% for ex in (extras or [none]) %}
+    <div class="extra-row">
+      <input class="form-control" name="extra_desc" placeholder="Ex.: Caixa, etiqueta, fita, gás" aria-label="Descrição" value="{{ ex['descricao'] if ex }}">
+      <input class="form-control" name="extra_valor" inputmode="decimal" placeholder="Valor por lote (R$)" aria-label="Valor" value="{{ (ex['valor_centavos'] / 100)|num(2) if ex }}">
+      <button type="button" class="btn icon-button" aria-label="Remover custo" title="Remover custo" onclick="removerLinha(this, 'lista-extras')">-</button>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn" onclick="adicionarLinha('lista-extras')">+ Adicionar custo extra</button>
+  <small class="form-hint">Custos que não passam pelo estoque, cobrados uma vez por lote da receita.</small>
+
+  <div class="acoes"><button class="btn">Salvar receita</button>
+    <a class="btn btn-secundario" href="{{ url_for('receitas') }}">Cancelar</a></div>
+</form>
+<script>
+function adicionarLinha(listaId) {
+    const lista = document.getElementById(listaId);
+    const nova = lista.firstElementChild.cloneNode(true);
+    nova.querySelectorAll('input').forEach(c => c.value = '');
+    nova.querySelectorAll('select').forEach(c => c.value = '');
+    const unidade = nova.querySelector('.ingredient-unit');
+    if (unidade) unidade.textContent = '';
+    lista.appendChild(nova);
+    (nova.querySelector('select') || nova.querySelector('input')).focus();
+}
+function removerLinha(botao, listaId) {
+    const lista = document.getElementById(listaId);
+    const linha = botao.closest('.ingrediente-row, .extra-row, .item-encomenda');
+    if (lista.children.length > 1) { linha.remove(); return; }
+    linha.querySelectorAll('input, select').forEach(c => c.value = '');   // mantém sempre uma linha
+    const unidade = linha.querySelector('.ingredient-unit');
+    if (unidade) unidade.textContent = '';
+}
+function mostrarUnidade(select) {
+    const opcao = select.selectedOptions[0];
+    select.parentElement.querySelector('.ingredient-unit').textContent = opcao ? (opcao.dataset.unidade || '') : '';
+}
+</script>
+{% endblock %}

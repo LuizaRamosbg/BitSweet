@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Encomenda #{{ d['encomenda']['id'] }}{% endblock %}
+{% block conteudo %}
+{% set e = d['encomenda'] %}
+<h2>Encomenda #{{ e['id'] }} · {{ e['cliente_nome'] }}</h2>
+<div class="cards">
+  <div class="card-dashboard"><span>Valor total</span><h2>{{ e['valor_total_centavos']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Pago ({{ e['status_pagamento'] }})</span><h2>{{ e['valor_pago_centavos']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Saldo devedor</span><h2>{{ d['saldo_devedor']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Entrega prevista</span><h2>{{ e['data_entrega_prevista']|data }}</h2></div>
+</div>
+
+<h3>Itens</h3>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Produto</th><th class="num">Qtd (porções)</th><th class="num">Preço unit.</th><th class="num">Subtotal</th><th class="num">Custo unit.</th><th class="num">Lucro</th></tr>
+{% for i in d['itens'] %}
+<tr><td>{{ i['nome'] }}</td><td class="num">{{ i['quantidade']|num(1) }}</td><td class="num">{{ i['preco_unit_centavos']|reais }}</td>
+<td class="num">{{ i['subtotal']|reais }}</td><td class="num">{{ i['custo_unit_centavos']|reais }}</td>
+<td class="num">{{ ((i['preco_unit_centavos'] - i['custo_unit_centavos']) * i['quantidade'])|reais }}</td></tr>
+{% endfor %}
+</table></div>
+{% if e['observacoes'] %}<p class="texto-suave">Obs.: {{ e['observacoes'] }}</p>{% endif %}
+
+<div class="card-dashboard">
+  <h3>Status</h3>
+  <p class="texto-suave">Atual: <span class="selo">{{ e['status'] }}</span>
+    {% if e['estoque_baixado'] %}· insumos já baixados do estoque{% endif %}</p>
+  <form method="post" action="{{ url_for('encomenda_status', eid=e['id']) }}" class="acoes">
+    <select class="form-control" name="status" style="max-width:240px">
+      {% for s in status_todos %}<option {{ 'selected' if s == e['status'] }}>{{ s }}</option>{% endfor %}
+    </select>
+    <button class="btn">Atualizar status</button>
+  </form>
+  <p class="texto-suave">Ao marcar <b>Em Produção</b>, os insumos da ficha técnica são baixados automaticamente.</p>
+</div>
+
+<div class="card-dashboard">
+  <h3>Pagamento</h3>
+  {% if d['pagamentos'] %}
+  <table class="table"><tr><th>Data</th><th>Forma</th><th class="num">Valor</th></tr>
+  {% for p in d['pagamentos'] %}<tr><td>{{ p['data']|data }}</td><td>{{ p['forma'] or '—' }}</td><td class="num">{{ p['valor_centavos']|reais }}</td></tr>{% endfor %}
+  </table>{% endif %}
+  {% if e['status'] != 'Cancelado' and d['saldo_devedor'] > 0 %}
+  <form method="post" action="{{ url_for('encomenda_pagamento', eid=e['id']) }}" class="formulario row-campos" style="margin-top:12px;padding:0;border:0">
+    <label class="form-group">Valor (R$)<input class="form-control" name="valor" inputmode="decimal" placeholder="até {{ d['saldo_devedor']|reais }}"></label>
+    <label class="form-group">Forma<select class="form-control" name="forma">{% for f in formas %}<option>{{ f }}</option>{% endfor %}</select></label>
+    <label class="form-group">Data<input class="form-control" type="date" name="data" value="{{ hoje }}"></label>
+    <button class="btn">Registrar pagamento</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

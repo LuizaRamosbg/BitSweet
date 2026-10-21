@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}{% endblock %} - BitSweet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="top-header">
+        <nav class="top-nav">
+            <div class="nav-links">
+                <a class="btnheader" href="{{ url_for('inicio') }}">Início</a>
+                <a class="btnheader" href="{{ url_for('insumos') }}">Estoque</a>
+                <a class="btnheader" href="{{ url_for('receitas') }}">Receitas</a>
+                <a class="btnheader" href="{{ url_for('clientes') }}">Clientes</a>
+                <a class="btnheader" href="{{ url_for('encomendas') }}">Encomendas</a>
+                <a class="btnheader" href="{{ url_for('relatorios') }}">Relatórios</a>
+            </div>
+            <div class="brand"><span>BitSweet</span></div>
+        </nav>
+    </header>
+
+    <div class="dashboard">
+        {% set ep = request.endpoint or '' %}
+        <aside class="sidebar">
+            <div class="logo-area">
+                <h3>BitSweet</h3>
+                <small>Doceria LeFerFe</small>
+            </div>
+            <nav class="menu-lateral">
+                <a href="{{ url_for('inicio') }}" class="menu-item {{ 'active' if ep == 'inicio' }}">🏠 Início</a>
+                <a href="{{ url_for('insumos') }}" class="menu-item {{ 'active' if ep.startswith('insumo') }}">📦 Estoque</a>
+                <a href="{{ url_for('compras') }}" class="menu-item {{ 'active' if ep == 'compras' }}">🛒 Compras</a>
+                <a href="{{ url_for('receita_nova') }}" class="menu-item {{ 'active' if ep in ['receita_nova', 'receita_editar'] }}">👨‍🍳 Montar Receita</a>
+                <a href="{{ url_for('receitas') }}" class="menu-item {{ 'active' if ep in ['receitas', 'receita_detalhe'] }}">📋 Ver Receitas</a>
+                <a href="{{ url_for('producoes') }}" class="menu-item {{ 'active' if ep == 'producoes' }}">🏭 Produções</a>
+                <a href="{{ url_for('clientes') }}" class="menu-item {{ 'active' if ep.startswith('cliente') }}">Clientes</a>
+                <a href="{{ url_for('encomendas') }}" class="menu-item {{ 'active' if ep.startswith('encomenda') }}">Encomendas</a>
+                <a href="{{ url_for('relatorios') }}" class="menu-item {{ 'active' if ep.startswith('relatorio') }}">Relatórios</a>
+            </nav>
+        </aside>
+
+        <main class="content">
+            {% if alertas_estoque %}
+                <section class="stock-alert-banner" role="alert" aria-label="Alertas de estoque mínimo">
+                    <strong>{{ alertas_estoque|length }} insumo(s) no nível mínimo ou abaixo:</strong>
+                    {% for a in alertas_estoque %}<span>{{ a['nome'] }} ({{ a['disponivel']|num(2) }} {{ a['unidade_base'] }} / mínimo {{ a['estoque_minimo']|num(2) }})</span>{% endfor %}
+                    <a href="{{ url_for('insumos') }}">Ver estoque</a>
+                </section>
+            {% endif %}
+            {% if alertas_validade %}
+                {% set vencidos = alertas_validade|selectattr('dias', 'lt', 0)|list %}
+                <section class="stock-alert-banner validade-alert-banner" role="alert" aria-label="Alertas de validade">
+                    <strong>{% if vencidos %}{{ vencidos|length }} lote(s) vencido(s){% if alertas_validade|length > vencidos|length %} e {% endif %}{% endif %}{% if alertas_validade|length > vencidos|length %}{{ alertas_validade|length - vencidos|length }} lote(s) vencendo em até 7 dias{% endif %}:</strong>
+                    {% for l in alertas_validade %}<a href="{{ url_for('insumo_detalhe', iid=l['insumo_id']) }}" class="selo {{ 'selo-alerta' if l['dias'] < 0 }}">{{ l['nome'] }} · {{ l['saldo']|num(2) }} {{ l['unidade_base'] }} · {% if l['dias'] < 0 %}venceu {{ l['validade']|data }}{% elif l['dias'] == 0 %}vence hoje{% else %}vence em {{ l['dias'] }} dia(s){% endif %}</a>{% endfor %}
+                </section>
+            {% endif %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}<div class="flash-messages" role="status" aria-live="polite">
+                    {% for category, message in messages %}<div class="flash-message flash-{{ category }}">{{ message }}</div>{% endfor %}
+                </div>{% endif %}
+            {% endwith %}
+            {% block conteudo %}{% endblock %}
+        </main>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 BitSweet - Sistema de Gestão de Doceria</p>
+    </footer>
+</body>
+</html>

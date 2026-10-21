@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Início{% endblock %}
+{% block conteudo %}
+<h2>Visão geral <span class="texto-suave">· últimos 30 dias</span></h2>
+<div class="cards">
+  <div class="card-dashboard"><span>Faturamento</span><h2>{{ lucro.receita|reais }}</h2></div>
+  <div class="card-dashboard"><span>Lucro bruto</span><h2>{{ lucro.lucro|reais }}</h2></div>
+  <div class="card-dashboard"><span>Margem de lucro</span><h2>{{ lucro.margem|num(1) }}%</h2></div>
+  <div class="card-dashboard"><span>Encomendas em aberto</span><h2>{{ kpis.em_aberto }}</h2></div>
+</div>
+<h3>Encomendas em andamento</h3>
+<div class="tabela-dashboard">
+{% if abertas %}
+<table class="table"><tr><th>Cliente</th><th>Entrega</th><th>Status</th><th class="num">Valor</th></tr>
+{% for e in abertas %}
+<tr><td><a href="{{ url_for('encomenda_detalhe', eid=e['id']) }}">{{ e['cliente_nome'] }}</a></td>
+<td>{{ e['data_entrega_prevista']|data }}</td><td><span class="selo">{{ e['status'] }}</span></td>
+<td class="num">{{ e['valor_total_centavos']|reais }}</td></tr>
+{% endfor %}</table>
+{% else %}<p class="texto-suave">Nenhuma encomenda em aberto.</p>{% endif %}
+</div>
+<div class="acoes">
+  <a class="btn" href="{{ url_for('encomenda_nova') }}">+ Nova encomenda</a>
+  <a class="btn btn-secundario" href="{{ url_for('compras') }}">Registrar compra</a>
+  <a class="btn btn-secundario" href="{{ url_for('receita_nova') }}">Nova receita</a>
+</div>
+{% endblock %}

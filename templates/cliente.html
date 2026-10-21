@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titulo %}{{ h['cliente']['nome'] }}{% endblock %}
+{% block conteudo %}
+{% set c = h['cliente'] %}
+<h2>{{ c['nome'] }}</h2>
+<p class="texto-suave">{{ c['telefone'] or '' }} {{ c['email'] or '' }} {{ c['endereco'] or '' }}</p>
+{% if c['observacoes'] %}<p>{{ c['observacoes'] }}</p>{% endif %}
+<div class="acoes">
+  <a class="btn btn-secundario btn-peq" href="{{ url_for('cliente_form', cid=c['id']) }}">Editar</a>
+  <a class="btn btn-peq" href="{{ url_for('encomenda_nova', cliente=c['id']) }}">Nova encomenda</a>
+</div>
+<h3>Histórico de compras</h3>
+<div class="cards">
+  <div class="card-dashboard"><span>Encomendas</span><h2>{{ h['encomendas']|length }}</h2></div>
+  <div class="card-dashboard"><span>Total comprado</span><h2>{{ h['total_gasto']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Ticket médio</span><h2>{{ h['ticket_medio']|reais }}</h2></div>
+  <div class="card-dashboard"><span>Em aberto</span><h2>{{ h['em_aberto']|reais }}</h2></div>
+</div>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Pedido</th><th>Entrega</th><th>Status</th><th>Pagamento</th><th class="num">Valor</th></tr>
+{% for e in h['encomendas'] %}
+<tr><td><a href="{{ url_for('encomenda_detalhe', eid=e['id']) }}">#{{ e['id'] }}</a> · {{ e['data_pedido']|data }}</td>
+<td>{{ e['data_entrega_prevista']|data }}</td><td><span class="selo">{{ e['status'] }}</span></td>
+<td>{{ e['status_pagamento'] }}</td><td class="num">{{ e['valor_total_centavos']|reais }}</td></tr>
+{% else %}<tr><td colspan="5" class="texto-suave">Sem encomendas.</td></tr>{% endfor %}
+</table></div>
+{% if h['produtos_preferidos'] %}
+<h3>Produtos preferidos</h3>
+<div class="card-dashboard"><ul>{% for p in h['produtos_preferidos'] %}<li>{{ p['nome'] }}: {{ p['qtd']|num(0) }} {{ p['unidade_rendimento'] }} ({{ p['valor']|reais }})</li>{% endfor %}</ul></div>
+{% endif %}
+<form method="post" action="{{ url_for('cliente_excluir', cid=c['id']) }}" onsubmit="return confirm('Excluir cliente?')">
+  <button class="btn btn-perigo btn-peq">Excluir cliente</button></form>
+{% endblock %}

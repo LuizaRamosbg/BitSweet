@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titulo %}Insumos{% endblock %}
+{% block conteudo %}
+<h2>Insumos e estoque</h2>
+<div class="card-dashboard">
+  <h3>Cadastrar insumo ou embalagem</h3>
+  <form method="post" action="{{ url_for('insumo_criar') }}" class="formulario" style="padding:0;border:0">
+    <div class="row-campos">
+      <label class="form-group">Nome<input class="form-control" name="nome" required placeholder="Ex.: Farinha de trigo"></label>
+      <label class="form-group">Tipo<select class="form-control" name="tipo">{% for t in tipos %}<option>{{ t }}</option>{% endfor %}</select></label>
+      <label class="form-group">Unidade base<select class="form-control" name="unidade_base">{% for u in unidades %}<option>{{ u }}</option>{% endfor %}</select></label>
+      <label class="form-group">Estoque mínimo (na unidade base)<input class="form-control" name="estoque_minimo" value="0" inputmode="decimal"></label>
+    </div>
+    <button class="btn">Cadastrar</button>
+  </form>
+</div>
+<div class="acoes"><a class="btn btn-secundario btn-peq" href="{{ url_for('insumos', inativos=0 if mostrar_inativos else 1) }}">
+  {{ 'Ocultar inativos' if mostrar_inativos else 'Mostrar inativos' }}</a></div>
+<div class="tabela-dashboard">
+<table class="table">
+<tr><th>Insumo</th><th>Tipo</th><th class="num">Disponível</th><th>Próxima validade</th><th class="num">Mínimo</th><th class="num">Custo unitário</th><th></th></tr>
+{% for i in insumos %}
+<tr>
+  <td><a href="{{ url_for('insumo_detalhe', iid=i['id']) }}">{{ i['nome'] }}</a>
+      {% if not i['ativo'] %}<span class="selo selo-alerta">inativo</span>{% endif %}</td>
+  <td>{{ i['tipo'] }}</td>
+  <td class="num">{{ i['disponivel']|num(1) }} {{ i['unidade_base'] }}
+      {% if i['estoque_minimo'] and i['disponivel'] <= i['estoque_minimo'] %}<span class="selo selo-alerta">abaixo do mínimo</span>{% endif %}
+      {% if i['vencido'] > 0 %}<br><span class="selo selo-alerta">+ {{ i['vencido']|num(1) }} vencido</span>{% endif %}</td>
+  <td>{% set d = dias_ate(i['proxima_validade']) %}{% if d is none %}<span class="texto-suave">—</span>{% else %}{{ i['proxima_validade']|data }}{% if d <= 7 %} <span class="selo selo-alerta">{{ 'hoje' if d == 0 else d ~ ' dia(s)' }}</span>{% endif %}{% endif %}</td>
+  <td class="num">{{ i['estoque_minimo']|num(1) }}</td>
+  <td class="num">{{ custo_unit(i['custo_medio_centavos'], i['unidade_base']) }}</td>
+  <td><a class="btn btn-secundario btn-peq" href="{{ url_for('compras', insumo=i['id']) }}">Comprar</a></td>
+</tr>
+{% else %}<tr><td colspan="7" class="texto-suave">Nenhum insumo cadastrado.</td></tr>{% endfor %}
+</table>
+</div>
+{% endblock %}
