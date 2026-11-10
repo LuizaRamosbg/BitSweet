@@ -143,7 +143,8 @@ class ReceitaService:
                   f"há {it['disponivel']:g} dentro da validade)" for it in itens
                   if it["disponivel"] + 1e-9 < it["quantidade"] * lotes]
         if faltas:
-            raise RegraNegocio(f"Estoque insuficiente para {r['nome']}: " + "; ".join(faltas))
+            raise RegraNegocio(f"Estoque insuficiente para {r['nome']}. Insumos em falta:\n• "
+                              + "\n• ".join(faltas))
 
         calc = self.calcular(receita_id)
         custo = round(calc["custo_total"] * lotes)
