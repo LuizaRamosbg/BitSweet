@@ -1,5 +1,7 @@
 """Utilitários compartilhados: erros de regra de negócio, unidades e dinheiro."""
 import datetime
+import re
+import unicodedata
 
 
 class RegraNegocio(Exception):
@@ -74,3 +76,24 @@ def data_valida(texto, campo="data", permitir_vazio=False):
         return datetime.date.fromisoformat(texto).isoformat()
     except ValueError:
         raise RegraNegocio(f"Data inválida: {texto}")
+
+
+# letras (com acento), espaços, hífen e apóstrofo — sem números nem símbolos
+_NOME_VALIDO = re.compile(r"^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$")
+
+
+def validar_nome(nome, campo):
+    """Limpa espaços extras e rejeita nomes com números ou caracteres especiais."""
+    nome = " ".join((nome or "").split())
+    if not nome:
+        raise RegraNegocio(f"Informe o nome {campo}.")
+    if not _NOME_VALIDO.match(nome):
+        raise RegraNegocio(f"O nome {campo} deve conter apenas letras, espaços e hífen (sem números ou "
+                           f"caracteres especiais).")
+    return nome
+
+
+def chave_nome(nome):
+    """Forma comparável de um nome: sem acentos, minúsculo ('Açúcar' == 'acucar')."""
+    sem_acento = unicodedata.normalize("NFKD", nome or "").encode("ascii", "ignore").decode()
+    return " ".join(sem_acento.lower().split())

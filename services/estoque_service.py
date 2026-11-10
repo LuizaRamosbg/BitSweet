@@ -2,7 +2,7 @@
 import datetime
 
 from repositories.insumo_repository import InsumoRepository
-from services.util import RegraNegocio, UNIDADES_BASE, hoje, para_base
+from services.util import RegraNegocio, UNIDADES_BASE, chave_nome, hoje, para_base, validar_nome
 
 TIPOS_INSUMO = ("ingrediente", "embalagem", "outro")
 DIAS_ALERTA_VALIDADE = 7          # avisar lotes que vencem nesta janela
@@ -15,18 +15,17 @@ class EstoqueService:
 
     # RF-01 - Cadastro de insumos
     def _validar_cadastro(self, nome, tipo, unidade_base, estoque_minimo, ignorar_id=None):
-        nome = (nome or "").strip()
-        if not nome:
-            raise RegraNegocio("Informe o nome do insumo.")
+        nome = validar_nome(nome, "do insumo")
         if tipo not in TIPOS_INSUMO:
             raise RegraNegocio("Tipo de insumo inválido.")
         if unidade_base not in UNIDADES_BASE:
             raise RegraNegocio("A unidade base deve ser g, ml ou un.")
         if estoque_minimo < 0:
             raise RegraNegocio("O estoque mínimo não pode ser negativo.")
-        existente = self.repo.buscar_por_nome(nome)
-        if existente and existente["id"] != ignorar_id:
-            raise RegraNegocio(f"Já existe um insumo chamado '{existente['nome']}'.")
+        chave = chave_nome(nome)
+        for existente in self.repo.nomes():                      # 'Açúcar' e 'Acucar' são o mesmo insumo
+            if existente["id"] != ignorar_id and chave_nome(existente["nome"]) == chave:
+                raise RegraNegocio(f"Já existe um insumo chamado '{existente['nome']}'.")
         return nome
 
     def cadastrar(self, nome, tipo, unidade_base, estoque_minimo=0):
@@ -84,7 +83,7 @@ class EstoqueService:
                          preco_total_centavos, data=None, fornecedor=None, validade=None, codigo_lote=None):
         insumo = self.obter(insumo_id)
         if qtd_embalagens <= 0 or tamanho_embalagem <= 0:
-            raise RegraNegocio("Quantidade e tamanho da embalagem devem ser maiores que zero.")
+            raise RegraNegocio("A quantidade de embalagens e a quantidade em cada embalagem devem ser maiores que zero.")
         if preco_total_centavos < 0:
             raise RegraNegocio("O preço total não pode ser negativo.")
         _, tamanho_base = para_base(tamanho_embalagem, unidade_embalagem, insumo["unidade_base"])

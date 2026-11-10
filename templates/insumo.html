@@ -79,7 +79,7 @@
 {% else %}<tr><td colspan="5" class="texto-suave">Sem movimentações.</td></tr>{% endfor %}
 </table></div>
 
-<form method="post" action="{{ url_for('insumo_excluir', iid=i['id']) }}" onsubmit="return confirm('Excluir ou desativar este insumo?')">
+<form method="post" action="{{ url_for('insumo_excluir', iid=i['id']) }}" data-confirmar="Excluir o insumo “{{ i['nome'] }}”?&#10;&#10;Se ele já foi usado em compras ou receitas, será apenas desativado para preservar o histórico.">
   <button class="btn btn-perigo btn-peq">Excluir / desativar</button>
 </form>
 {% endblock %}

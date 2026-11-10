@@ -12,7 +12,7 @@
 <td class="num">{{ c['custo_total']|reais }}</td>
 <td class="num">{{ c['custo_porcao']|reais }}</td>
 <td class="num">{{ c['preco_venda']|reais }}</td>
-<td class="num">{{ c['lotes_possiveis']|num(1) }}</td></tr>
+<td class="num">{{ c['lotes_possiveis']|num(0) }}</td></tr>
 {% else %}<tr><td colspan="6" class="texto-suave">Nenhuma receita cadastrada.</td></tr>{% endfor %}
 </table></div>
 {% endblock %}

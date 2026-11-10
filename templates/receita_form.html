@@ -4,7 +4,7 @@
 {% set editando = calc is not none %}
 {% set r = calc['receita'] if editando else {} %}
 <h2>{{ 'Editar receita' if editando else 'Nova receita' }}</h2>
-<form method="post" class="formulario">
+<form data-rascunho method="post" class="formulario">
   <div class="row-campos">
     <label class="form-group">Nome do produto<input class="form-control" name="nome" required value="{{ r['nome'] or '' }}" placeholder="Ex.: Brigadeiro gourmet"></label>
     <label class="form-group">Rendimento (quantidade)<input class="form-control" name="rendimento" inputmode="decimal" required value="{{ r['rendimento'] or '1' }}" placeholder="Ex.: 20"></label>

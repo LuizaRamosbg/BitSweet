@@ -142,9 +142,14 @@ def insumo_ajuste(iid):
 
 @app.post("/insumos/<int:iid>/excluir")
 def insumo_excluir(iid):
-    r = EstoqueService(db()).excluir(iid)
-    flash("Insumo excluído." if r == "excluido" else "Insumo em uso: foi desativado para preservar o histórico.",
-          "success")
+    est = EstoqueService(db())
+    nome = est.obter(iid)["nome"]
+    if est.excluir(iid) == "excluido":
+        flash(f"Insumo \"{nome}\" excluído com sucesso.", "success")
+    else:
+        flash(f"O insumo \"{nome}\" já foi usado em compras ou receitas, por isso não foi apagado: ele foi "
+              f"desativado e saiu das listas, mas o histórico foi mantido. Use \"Mostrar inativos\" para "
+              f"vê-lo ou reativá-lo.", "success")
     return redirect(url_for("insumos"))
 
 
@@ -167,7 +172,7 @@ def compras():                                                        # RF-02 / 
     if request.method == "POST":
         f = request.form
         r = est.registrar_compra(int(f["insumo_id"]), numero(f.get("qtd_embalagens"), "quantidade de embalagens", 0),
-                                 numero(f.get("tamanho_embalagem"), "tamanho da embalagem", 0),
+                                 numero(f.get("tamanho_embalagem"), "quantidade em cada embalagem", 0),
                                  f.get("unidade_embalagem"), centavos(f.get("preco_total"), "preço total"),
                                  data_valida(f.get("data"), "data", permitir_vazio=True),
                                  (f.get("fornecedor") or "").strip() or None,
@@ -235,8 +240,13 @@ def receita_produzir(rid):                                            # RF-12
 
 @app.post("/receitas/<int:rid>/excluir")
 def receita_excluir(rid):
-    r = ReceitaService(db()).excluir(rid)
-    flash("Receita excluída." if r == "excluida" else "Receita com histórico: foi desativada.", "success")
+    svc = ReceitaService(db())
+    nome = svc.obter(rid)["nome"]
+    if svc.excluir(rid) == "excluida":
+        flash(f"Receita \"{nome}\" excluída com sucesso.", "success")
+    else:
+        flash(f"A receita \"{nome}\" já tem produções ou encomendas, por isso não foi apagada: ela foi "
+              f"desativada e saiu da lista, mas o histórico foi mantido.", "success")
     return redirect(url_for("receitas"))
 
 

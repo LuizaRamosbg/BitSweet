@@ -48,7 +48,7 @@
     <button class="btn">Registrar produção</button>
   </form>
 </div>
-<form method="post" action="{{ url_for('receita_excluir', rid=r['id']) }}" onsubmit="return confirm('Excluir esta receita?')">
+<form method="post" action="{{ url_for('receita_excluir', rid=r['id']) }}" data-confirmar="Excluir a receita “{{ r['nome'] }}”?&#10;&#10;Se ela já tem produções ou encomendas, será apenas desativada para preservar o histórico.">
   <button class="btn btn-perigo btn-peq">Excluir receita</button>
 </form>
 {% endblock %}

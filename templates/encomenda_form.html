@@ -5,7 +5,7 @@
 {% if not clientes %}
   <div class="card-dashboard">Cadastre um cliente antes. <a href="{{ url_for('cliente_form') }}">Novo cliente</a></div>
 {% else %}
-<form method="post" class="formulario">
+<form data-rascunho method="post" class="formulario">
   <div class="row-campos">
     <label class="form-group">Cliente<select class="form-control" name="cliente_id" required>
       {% for c in clientes %}<option value="{{ c['id'] }}" {{ 'selected' if cliente_sel == c['id'] }}>{{ c['nome'] }}</option>{% endfor %}

@@ -26,8 +26,8 @@ class InsumoRepository:
     def buscar(self, insumo_id):
         return self.conn.execute("SELECT * FROM insumos WHERE id = ?", (insumo_id,)).fetchone()
 
-    def buscar_por_nome(self, nome):
-        return self.conn.execute("SELECT * FROM insumos WHERE nome = ?", (nome,)).fetchone()
+    def nomes(self):
+        return self.conn.execute("SELECT id, nome FROM insumos").fetchall()
 
     def inserir(self, nome, tipo, unidade_base, estoque_minimo):
         cur = self.conn.execute(

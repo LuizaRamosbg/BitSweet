@@ -4,7 +4,7 @@
 <h2>Insumos e estoque</h2>
 <div class="card-dashboard">
   <h3>Cadastrar insumo ou embalagem</h3>
-  <form method="post" action="{{ url_for('insumo_criar') }}" class="formulario" style="padding:0;border:0">
+  <form data-rascunho method="post" action="{{ url_for('insumo_criar') }}" class="formulario" style="padding:0;border:0">
     <div class="row-campos">
       <label class="form-group">Nome<input class="form-control" name="nome" required placeholder="Ex.: Farinha de trigo"></label>
       <label class="form-group">Tipo<select class="form-control" name="tipo">{% for t in tipos %}<option>{{ t }}</option>{% endfor %}</select></label>

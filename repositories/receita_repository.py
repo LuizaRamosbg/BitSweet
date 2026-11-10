@@ -11,8 +11,8 @@ class ReceitaRepository:
     def buscar(self, receita_id):
         return self.conn.execute("SELECT * FROM receitas WHERE id = ?", (receita_id,)).fetchone()
 
-    def buscar_por_nome(self, nome):
-        return self.conn.execute("SELECT * FROM receitas WHERE nome = ?", (nome,)).fetchone()
+    def nomes(self):
+        return self.conn.execute("SELECT id, nome FROM receitas").fetchall()
 
     def inserir(self, d):
         cur = self.conn.execute(

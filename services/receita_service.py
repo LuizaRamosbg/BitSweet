@@ -1,7 +1,9 @@
 """Módulo 2 - Gestão de Receitas (RF-06 a RF-09) e Módulo 3 - Precificação e Custos (RF-10 a RF-12)."""
+import math
+
 from repositories.receita_repository import ReceitaRepository
 from services.estoque_service import EstoqueService
-from services.util import RegraNegocio, hoje
+from services.util import RegraNegocio, chave_nome, hoje, validar_nome
 
 
 class ReceitaService:
@@ -18,9 +20,7 @@ class ReceitaService:
         extras: [(descricao, valor_centavos_por_lote), ...]      (custos fora do estoque)
         """
         d = dict(dados)
-        d["nome"] = (d.get("nome") or "").strip()
-        if not d["nome"]:
-            raise RegraNegocio("Informe o nome da receita.")
+        d["nome"] = validar_nome(d.get("nome"), "da receita")
         if not d.get("rendimento") or d["rendimento"] <= 0:
             raise RegraNegocio("O rendimento deve ser maior que zero (ex.: 1 bolo, 20 fatias).")
         d["unidade_rendimento"] = (d.get("unidade_rendimento") or "porção").strip()
@@ -42,9 +42,10 @@ class ReceitaService:
             raise RegraNegocio("Adicione ao menos um insumo à receita.")
         extras = [(desc.strip(), v) for desc, v in extras if desc and desc.strip()]
 
-        existente = self.repo.buscar_por_nome(d["nome"])
-        if existente and existente["id"] != receita_id:
-            raise RegraNegocio(f"Já existe uma receita chamada '{existente['nome']}'.")
+        chave = chave_nome(d["nome"])
+        for existente in self.repo.nomes():
+            if existente["id"] != receita_id and chave_nome(existente["nome"]) == chave:
+                raise RegraNegocio(f"Já existe uma receita chamada '{existente['nome']}'.")
 
         with self.conn:
             if receita_id:
@@ -120,7 +121,8 @@ class ReceitaService:
     def _lotes_possiveis(itens):
         if not itens:
             return 0
-        return min(it["disponivel"] / it["quantidade"] for it in itens)
+        # arredonda para baixo: só conta lotes inteiros que dá para produzir (3,9 -> 3)
+        return math.floor(min(it["disponivel"] / it["quantidade"] for it in itens) + 1e-9)
 
     # RF-12 - Baixa automática
     def produzir(self, receita_id, lotes=None, porcoes=None, encomenda_id=None, data=None):
