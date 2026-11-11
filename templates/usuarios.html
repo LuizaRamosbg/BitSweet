@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<h2>Usuários</h2>
+<div class="tabela-dashboard">
+<table class="table"><tr><th>Usuário</th><th>Criado em</th><th></th></tr>
+{% for u in usuarios %}
+<tr><td>{{ u['usuario'] }}{% if u['id'] == usuario_logado['id'] %} <span class="selo selo-ok">você</span>{% endif %}</td>
+<td>{{ u['criado_em']|data }}</td>
+<td>{% if u['id'] != usuario_logado['id'] %}
+  <form method="post" action="{{ url_for('usuario_excluir', uid=u['id']) }}" data-confirmar="Excluir o usuário “{{ u['usuario'] }}”? Ele não poderá mais entrar no sistema.">
+    <button class="btn btn-perigo btn-peq">Excluir</button></form>{% endif %}</td></tr>
+{% endfor %}
+</table></div>
+
+<div class="card-dashboard">
+  <h3>Novo usuário</h3>
+  <form method="post" class="formulario" style="padding:0;border:0" autocomplete="off">
+    <div class="row-campos">
+      <label class="form-group">Usuário<input class="form-control" name="usuario" required placeholder="Ex.: maria.silva"
+             pattern="[A-Za-z0-9._\-]{3,30}" title="3 a 30 caracteres: letras sem acento, números, ponto, hífen ou sublinhado"></label>
+      <label class="form-group">Senha<input class="form-control" type="password" name="senha" required minlength="6" autocomplete="new-password"></label>
+      <label class="form-group">Confirme a senha<input class="form-control" type="password" name="confirmacao" required minlength="6" autocomplete="new-password"></label>
+    </div>
+    <button class="btn">Criar usuário</button>
+  </form>
+</div>
+
+<div class="card-dashboard">
+  <h3>Alterar minha senha</h3>
+  <form method="post" action="{{ url_for('usuario_senha') }}" class="formulario" style="padding:0;border:0">
+    <div class="row-campos">
+      <label class="form-group">Senha atual<input class="form-control" type="password" name="senha_atual" required autocomplete="current-password"></label>
+      <label class="form-group">Nova senha<input class="form-control" type="password" name="senha" required minlength="6" autocomplete="new-password"></label>
+      <label class="form-group">Confirme a nova senha<input class="form-control" type="password" name="confirmacao" required minlength="6" autocomplete="new-password"></label>
+    </div>
+    <button class="btn btn-secundario">Alterar senha</button>
+  </form>
+</div>
+{% endblock %}

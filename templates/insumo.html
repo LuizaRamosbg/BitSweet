@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block titulo %}{{ i['nome'] }}{% endblock %}
+{% block titulo %}{{ rotulo_insumo(i) }}{% endblock %}
 {% block conteudo %}
-<h2>{{ i['nome'] }} <span class="selo">{{ i['tipo'] }}</span>{% if not i['ativo'] %}<span class="selo selo-alerta">inativo</span>{% endif %}</h2>
+<h2>{{ i['nome'] }}{% if i['marca'] %} <span class="texto-suave">· {{ i['marca'] }}</span>{% endif %} <span class="selo">{{ i['tipo'] }}</span>{% if not i['ativo'] %}<span class="selo selo-alerta">inativo</span>{% endif %}</h2>
+{% if not i['marca'] %}<div class="flash-message flash-warning">Este insumo ainda não tem marca. A marca agora é obrigatória: informe-a em "Editar cadastro" abaixo.</div>{% endif %}
 <div class="cards">
   <div class="card-dashboard"><span>Disponível (dentro da validade)</span><h2>{{ disponivel|num(1) }} {{ i['unidade_base'] }}</h2></div>
   {% if i['saldo'] - disponivel > 0.000001 %}<div class="card-dashboard"><span>Em lotes vencidos</span><h2 style="color:#a52b2b">{{ (i['saldo'] - disponivel)|num(1) }} {{ i['unidade_base'] }}</h2></div>{% endif %}
@@ -41,6 +42,7 @@
   <form method="post" action="{{ url_for('insumo_editar', iid=i['id']) }}" class="formulario" style="padding:0;border:0">
     <div class="row-campos">
       <label class="form-group">Nome<input class="form-control" name="nome" value="{{ i['nome'] }}" required></label>
+      <label class="form-group">Marca<input class="form-control" name="marca" value="{{ i['marca'] }}" required maxlength="60" placeholder="Ex.: Dona Benta"></label>
       <label class="form-group">Tipo<select class="form-control" name="tipo">{% for t in tipos %}<option {{ 'selected' if t == i['tipo'] }}>{{ t }}</option>{% endfor %}</select></label>
       <label class="form-group">Unidade base<select class="form-control" name="unidade_base">{% for u in unidades %}<option {{ 'selected' if u == i['unidade_base'] }}>{{ u }}</option>{% endfor %}</select></label>
       <label class="form-group">Estoque mínimo<input class="form-control" name="estoque_minimo" value="{{ i['estoque_minimo'] }}" inputmode="decimal"></label>
@@ -63,10 +65,11 @@
 
 <h3>Compras</h3>
 <div class="tabela-dashboard">
-<table class="table"><tr><th>Data</th><th>Embalagens</th><th>Lote / validade</th><th>Fornecedor</th><th class="num">Preço total</th><th class="num">Custo por {{ i['unidade_base'] }}</th></tr>
+{% set com_fornecedor = compras|selectattr('fornecedor')|list %}
+<table class="table"><tr><th>Data</th><th>Embalagens</th><th>Lote / validade</th>{% if com_fornecedor %}<th>Fornecedor (antigo)</th>{% endif %}<th class="num">Preço total</th><th class="num">Custo por {{ i['unidade_base'] }}</th></tr>
 {% for c in compras %}
 <tr><td>{{ c['data']|data }}</td><td>{{ c['qtd_embalagens']|num(0) }} × {{ c['tamanho_embalagem']|num(0) }} {{ c['unidade_embalagem'] }}</td>
-<td>{{ c['codigo'] or '—' }}{% if c['validade'] %} · {{ c['validade']|data }}{% endif %}</td><td>{{ c['fornecedor'] or '—' }}</td><td class="num">{{ c['preco_total_centavos']|reais }}</td>
+<td>{{ c['codigo'] or '—' }}{% if c['validade'] %} · {{ c['validade']|data }}{% endif %}</td>{% if com_fornecedor %}<td>{{ c['fornecedor'] or '—' }}</td>{% endif %}<td class="num">{{ c['preco_total_centavos']|reais }}</td>
 <td class="num">{{ custo_unit(c['preco_total_centavos'] / c['quantidade_base'], i['unidade_base']) }}</td></tr>
 {% else %}<tr><td colspan="6" class="texto-suave">Nenhuma compra registrada.</td></tr>{% endfor %}
 </table></div>
@@ -79,7 +82,7 @@
 {% else %}<tr><td colspan="5" class="texto-suave">Sem movimentações.</td></tr>{% endfor %}
 </table></div>
 
-<form method="post" action="{{ url_for('insumo_excluir', iid=i['id']) }}" data-confirmar="Excluir o insumo “{{ i['nome'] }}”?&#10;&#10;Se ele já foi usado em compras ou receitas, será apenas desativado para preservar o histórico.">
+<form method="post" action="{{ url_for('insumo_excluir', iid=i['id']) }}" data-confirmar="Excluir o insumo “{{ rotulo_insumo(i) }}”?&#10;&#10;Se ele já foi usado em compras ou receitas, será apenas desativado para preservar o histórico.">
   <button class="btn btn-perigo btn-peq">Excluir / desativar</button>
 </form>
 {% endblock %}

@@ -22,6 +22,12 @@
                 <a class="btnheader" href="{{ url_for('relatorios') }}">Relatórios</a>
             </div>
             <div class="brand"><span>BitSweet</span></div>
+            {% if usuario_logado %}
+            <div class="usuario-nav">
+                <a href="{{ url_for('usuarios') }}" title="Usuários e senha">👤 {{ usuario_logado['usuario'] }}</a>
+                <form method="post" action="{{ url_for('logout') }}"><button class="btn btn-secundario btn-peq">Sair</button></form>
+            </div>
+            {% endif %}
         </nav>
     </header>
 
@@ -42,6 +48,7 @@
                 <a href="{{ url_for('clientes') }}" class="menu-item {{ 'active' if ep.startswith('cliente') }}">Clientes</a>
                 <a href="{{ url_for('encomendas') }}" class="menu-item {{ 'active' if ep.startswith('encomenda') }}">Encomendas</a>
                 <a href="{{ url_for('relatorios') }}" class="menu-item {{ 'active' if ep.startswith('relatorio') }}">Relatórios</a>
+                <a href="{{ url_for('usuarios') }}" class="menu-item {{ 'active' if ep.startswith('usuario') }}">👤 Usuários</a>
             </nav>
         </aside>
 
@@ -49,7 +56,7 @@
             {% if alertas_estoque %}
                 <section class="stock-alert-banner" role="alert" aria-label="Alertas de estoque mínimo">
                     <strong>{{ alertas_estoque|length }} insumo(s) no nível mínimo ou abaixo:</strong>
-                    {% for a in alertas_estoque %}<span>{{ a['nome'] }} ({{ a['disponivel']|num(2) }} {{ a['unidade_base'] }} / mínimo {{ a['estoque_minimo']|num(2) }})</span>{% endfor %}
+                    {% for a in alertas_estoque %}<span>{{ rotulo_insumo(a) }} ({{ a['disponivel']|num(2) }} {{ a['unidade_base'] }} / mínimo {{ a['estoque_minimo']|num(2) }})</span>{% endfor %}
                     <a href="{{ url_for('insumos') }}">Ver estoque</a>
                 </section>
             {% endif %}
@@ -57,7 +64,7 @@
                 {% set vencidos = alertas_validade|selectattr('dias', 'lt', 0)|list %}
                 <section class="stock-alert-banner validade-alert-banner" role="alert" aria-label="Alertas de validade">
                     <strong>{% if vencidos %}{{ vencidos|length }} lote(s) vencido(s){% if alertas_validade|length > vencidos|length %} e {% endif %}{% endif %}{% if alertas_validade|length > vencidos|length %}{{ alertas_validade|length - vencidos|length }} lote(s) vencendo em até 7 dias{% endif %}:</strong>
-                    {% for l in alertas_validade %}<a href="{{ url_for('insumo_detalhe', iid=l['insumo_id']) }}" class="selo {{ 'selo-alerta' if l['dias'] < 0 }}">{{ l['nome'] }} · {{ l['saldo']|num(2) }} {{ l['unidade_base'] }} · {% if l['dias'] < 0 %}venceu {{ l['validade']|data }}{% elif l['dias'] == 0 %}vence hoje{% else %}vence em {{ l['dias'] }} dia(s){% endif %}</a>{% endfor %}
+                    {% for l in alertas_validade %}<a href="{{ url_for('insumo_detalhe', iid=l['insumo_id']) }}" class="selo {{ 'selo-alerta' if l['dias'] < 0 }}">{{ rotulo_insumo(l) }} · {{ l['saldo']|num(2) }} {{ l['unidade_base'] }} · {% if l['dias'] < 0 %}venceu {{ l['validade']|data }}{% elif l['dias'] == 0 %}vence hoje{% else %}vence em {{ l['dias'] }} dia(s){% endif %}</a>{% endfor %}
                 </section>
             {% endif %}
             {% with messages = get_flashed_messages(with_categories=true) %}

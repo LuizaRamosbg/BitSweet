@@ -12,3 +12,4 @@ build
 .gitignore
 tests
 doceria.db
+.bitsweet_secret_key

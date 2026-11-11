@@ -93,6 +93,30 @@ def validar_nome(nome, campo):
     return nome
 
 
+# marca: letras, números, espaços e . & ' - / (ex.: "3 Corações", "Dona Benta", "M&M's")
+_MARCA_VALIDA = re.compile(r"^[^\W_][\w .&'/\-]*$")
+
+
+def validar_marca(marca):
+    """A marca é obrigatória: é ela que diferencia dois insumos de mesmo nome."""
+    marca = " ".join((marca or "").split())
+    if not marca:
+        raise RegraNegocio("Informe a marca do insumo (ex.: Dona Benta). Se não tiver marca, use \"Sem marca\" "
+                           "ou o nome do fornecedor.")
+    if len(marca) > 60 or not _MARCA_VALIDA.match(marca) or "_" in marca:
+        raise RegraNegocio("A marca deve ter até 60 caracteres: letras, números, espaços e . & ' - /")
+    return marca
+
+
+def rotulo_insumo(insumo):
+    """Nome para exibir: 'Farinha de trigo · Dona Benta' (sem a marca quando ela não foi informada)."""
+    try:
+        marca = insumo["marca"]
+    except (KeyError, IndexError):
+        marca = None
+    return f"{insumo['nome']} · {marca}" if marca else insumo["nome"]
+
+
 def chave_nome(nome):
     """Forma comparável de um nome: sem acentos, minúsculo ('Açúcar' == 'acucar')."""
     sem_acento = unicodedata.normalize("NFKD", nome or "").encode("ascii", "ignore").decode()

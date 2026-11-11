@@ -2,7 +2,8 @@
 import datetime
 
 from repositories.insumo_repository import InsumoRepository
-from services.util import RegraNegocio, UNIDADES_BASE, chave_nome, hoje, para_base, validar_nome
+from services.util import (RegraNegocio, UNIDADES_BASE, chave_nome, hoje, para_base, rotulo_insumo, validar_marca,
+                           validar_nome)
 
 TIPOS_INSUMO = ("ingrediente", "embalagem", "outro")
 DIAS_ALERTA_VALIDADE = 7          # avisar lotes que vencem nesta janela
@@ -14,33 +15,45 @@ class EstoqueService:
         self.repo = InsumoRepository(conn)
 
     # RF-01 - Cadastro de insumos
-    def _validar_cadastro(self, nome, tipo, unidade_base, estoque_minimo, ignorar_id=None):
+    def _validar_cadastro(self, nome, tipo, unidade_base, estoque_minimo, marca, ignorar_id=None):
         nome = validar_nome(nome, "do insumo")
+        marca = validar_marca(marca)
         if tipo not in TIPOS_INSUMO:
             raise RegraNegocio("Tipo de insumo inválido.")
         if unidade_base not in UNIDADES_BASE:
             raise RegraNegocio("A unidade base deve ser g, ml ou un.")
         if estoque_minimo < 0:
             raise RegraNegocio("O estoque mínimo não pode ser negativo.")
-        chave = chave_nome(nome)
-        for existente in self.repo.nomes():                      # 'Açúcar' e 'Acucar' são o mesmo insumo
-            if existente["id"] != ignorar_id and chave_nome(existente["nome"]) == chave:
-                raise RegraNegocio(f"Já existe um insumo chamado '{existente['nome']}'.")
-        return nome
+        # mesmo nome só é permitido com marca diferente ('Açúcar'/'Acucar' e 'União'/'uniao' são iguais)
+        chave = (chave_nome(nome), chave_nome(marca))
+        for existente in self.repo.nomes():
+            if existente["id"] != ignorar_id and (chave_nome(existente["nome"]),
+                                                  chave_nome(existente["marca"])) == chave:
+                inativo = " (está inativo: reative-o na lista de inativos)" if not existente["ativo"] else ""
+                raise RegraNegocio(f"Já existe um insumo chamado '{existente['nome']}' da marca "
+                                   f"'{existente['marca']}'{inativo}. Para cadastrar outro com o mesmo nome, "
+                                   f"informe uma marca diferente.")
+        return nome, marca
 
-    def cadastrar(self, nome, tipo, unidade_base, estoque_minimo=0):
-        nome = self._validar_cadastro(nome, tipo, unidade_base, estoque_minimo)
-        insumo_id = self.repo.inserir(nome, tipo, unidade_base, estoque_minimo)
+    def cadastrar(self, nome, tipo, unidade_base, estoque_minimo=0, marca=None):
+        nome, marca = self._validar_cadastro(nome, tipo, unidade_base, estoque_minimo, marca)
+        insumo_id = self.repo.inserir(nome, tipo, unidade_base, estoque_minimo, marca)
         self.conn.commit()
         return insumo_id
 
-    def editar(self, insumo_id, nome, tipo, unidade_base, estoque_minimo):
+    def editar(self, insumo_id, nome, tipo, unidade_base, estoque_minimo, marca=None):
         atual = self.obter(insumo_id)
-        nome = self._validar_cadastro(nome, tipo, unidade_base, estoque_minimo, ignorar_id=insumo_id)
+        nome, marca = self._validar_cadastro(nome, tipo, unidade_base, estoque_minimo, marca, ignorar_id=insumo_id)
         if unidade_base != atual["unidade_base"] and self.repo.em_uso(insumo_id):
             raise RegraNegocio("Não é possível mudar a unidade de um insumo que já tem movimentações ou receitas.")
-        self.repo.atualizar_cadastro(insumo_id, nome, tipo, unidade_base, estoque_minimo)
+        self.repo.atualizar_cadastro(insumo_id, nome, tipo, unidade_base, estoque_minimo, marca)
         self.conn.commit()
+
+    def catalogo(self):
+        """Todos os insumos (inclusive inativos) com nome e marca, para checar duplicidade na tela de cadastro."""
+        return [{"id": i["id"], "nome": i["nome"], "marca": i["marca"], "tipo": i["tipo"],
+                 "unidade_base": i["unidade_base"], "ativo": bool(i["ativo"]), "chave": chave_nome(i["nome"])}
+                for i in self.repo.nomes()]
 
     def excluir(self, insumo_id):
         """Exclui se nunca foi usado; caso contrário apenas desativa (preserva o histórico)."""
@@ -149,7 +162,7 @@ class EstoqueService:
             vencido = insumo["saldo"] - disponivel
             extra = f" ({vencido:g} {insumo['unidade_base']} em lotes vencidos)" if vencido > 1e-9 else ""
             raise RegraNegocio(
-                f"Estoque insuficiente de {insumo['nome']}: precisa {quantidade:g} {insumo['unidade_base']}, "
+                f"Estoque insuficiente de {rotulo_insumo(insumo)}: precisa {quantidade:g} {insumo['unidade_base']}, "
                 f"há {disponivel:g} {insumo['unidade_base']} dentro da validade{extra}.")
         self._consumir(insumo_id, quantidade, lotes, origem, referencia_id, data)
 

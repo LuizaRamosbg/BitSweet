@@ -23,9 +23,25 @@ def app(tmp_path, monkeypatch):
     return modulo
 
 
+USUARIO, SENHA = "admin", "senha-teste-123"
+
+
+@pytest.fixture()
+def cli_anonimo(app):
+    return app.app.test_client()
+
+
 @pytest.fixture()
 def cli(app):
-    return app.app.test_client()
+    """Cliente HTTP já logado (todas as telas exigem login)."""
+    from services.usuario_service import UsuarioService
+    conn = conexao.conectar()
+    UsuarioService(conn).criar(USUARIO, SENHA, SENHA)
+    conn.close()
+    c = app.app.test_client()
+    r = c.post("/login", data={"usuario": USUARIO, "senha": SENHA})
+    assert r.status_code == 302
+    return c
 
 
 @pytest.fixture()
@@ -59,7 +75,7 @@ def massa_base(app, db):
         ("Ovo", "ingrediente", "un", 0, (2, 1, "dz", 2400)),
         ("Caixa de bolo", "embalagem", "un", 0, (10, 1, "un", 2000)),
     ]:
-        ids[nome] = est.cadastrar(nome, tipo, un, minimo)
+        ids[nome] = est.cadastrar(nome, tipo, un, minimo, marca="Marca Teste")
         est.registrar_compra(ids[nome], *compra)
     rid = rec.salvar({"nome": "Bolo simples", "rendimento": 20, "unidade_rendimento": "fatia"},
                      [(ids["Farinha de trigo"], 500), (ids["Leite condensado"], 395), (ids["Leite"], 200),
@@ -79,19 +95,38 @@ def custo(db, iid):
 
 # ------------------------------------------------------------------ Estoque
 def test_ct01_cadastro_insumo(cli, db):
-    r = cli.post("/insumos", data=dict(nome="Farinha de trigo", tipo="ingrediente", unidade_base="g",
-                                       estoque_minimo="500"))
+    r = cli.post("/insumos", data=dict(nome="Farinha de trigo", marca="Dona Benta", tipo="ingrediente",
+                                       unidade_base="g", estoque_minimo="500"))
     assert r.status_code == 302 and "/compras" in r.location
     row = db.execute("SELECT * FROM insumos").fetchone()
     assert row["nome"] == "Farinha de trigo" and row["saldo"] == 0 and row["estoque_minimo"] == 500
+    assert row["marca"] == "Dona Benta"
 
 
 def test_ct02_nome_duplicado(cli, db):
-    cli.post("/insumos", data=dict(nome="Farinha de trigo", tipo="ingrediente", unidade_base="g"))
-    r = cli.post("/insumos", data=dict(nome="farinha de trigo", tipo="ingrediente", unidade_base="g"),
-                 follow_redirects=True)
-    assert "Já existe um insumo chamado" in flash(r)
+    """Mesmo nome e mesma marca (ignorando maiúsculas e acentos) é duplicado."""
+    cli.post("/insumos", data=dict(nome="Farinha de trigo", marca="Dona Benta", tipo="ingrediente", unidade_base="g"))
+    r = cli.post("/insumos", data=dict(nome="farinha de trigo", marca="dona benta", tipo="ingrediente",
+                                       unidade_base="g"), follow_redirects=True)
+    assert "Já existe um insumo chamado" in flash(r) and "marca diferente" in flash(r)
     assert db.execute("SELECT COUNT(*) FROM insumos").fetchone()[0] == 1
+
+
+def test_ct02b_mesmo_nome_outra_marca(cli, db):
+    cli.post("/insumos", data=dict(nome="Farinha de trigo", marca="Dona Benta", tipo="ingrediente", unidade_base="g"))
+    r = cli.post("/insumos", data=dict(nome="Farinha de trigo", marca="Renata", tipo="ingrediente", unidade_base="g"))
+    assert r.status_code == 302 and "/compras" in r.location
+    marcas = [m[0] for m in db.execute("SELECT marca FROM insumos ORDER BY marca")]
+    assert marcas == ["Dona Benta", "Renata"]
+    html = cli.get("/insumos").get_data(as_text=True)                  # tela lista os existentes com a marca
+    assert "Dona Benta" in html and "Renata" in html and "insumo-marca" in html
+
+
+def test_ct02c_marca_obrigatoria(cli, db):
+    r = cli.post("/insumos", data=dict(nome="Açúcar", marca="  ", tipo="ingrediente", unidade_base="g"),
+                 follow_redirects=True)
+    assert "Informe a marca" in flash(r)
+    assert db.execute("SELECT COUNT(*) FROM insumos").fetchone()[0] == 0
 
 
 def test_ct03_nome_em_branco(cli, db):
@@ -102,14 +137,14 @@ def test_ct03_nome_em_branco(cli, db):
 
 def test_ct04_embalagem(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Caixa de bolo", "embalagem", "un")
+    iid = est.cadastrar("Caixa de bolo", "embalagem", "un", marca="Marca Teste")
     assert est.obter(iid)["tipo"] == "embalagem"
 
 
 def test_ct05_editar(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Farinha", "ingrediente", "g", 0)
-    est.editar(iid, "Farinha de trigo", "ingrediente", "g", 800)
+    iid = est.cadastrar("Farinha", "ingrediente", "g", 0, marca="Marca Teste")
+    est.editar(iid, "Farinha de trigo", "ingrediente", "g", 800, marca="Marca Teste")
     i = est.obter(iid)
     assert i["nome"] == "Farinha de trigo" and i["estoque_minimo"] == 800
 
@@ -117,16 +152,16 @@ def test_ct05_editar(app, db):
 def test_ct06_trocar_unidade_com_compra(app, db):
     from services.util import RegraNegocio
     est = svc(app, db)[0]
-    iid = est.cadastrar("Farinha", "ingrediente", "g")
+    iid = est.cadastrar("Farinha", "ingrediente", "g", marca="Marca Teste")
     est.registrar_compra(iid, 1, 1, "kg", 500)
     with pytest.raises(RegraNegocio, match="mudar a unidade"):
-        est.editar(iid, "Farinha", "ingrediente", "ml", 0)
+        est.editar(iid, "Farinha", "ingrediente", "ml", 0, marca="Marca Teste")
 
 
 def test_ct07_excluir_e_desativar(app, db):
     ids, rid, _ = massa_base(app, db)
     est = svc(app, db)[0]
-    livre = est.cadastrar("Sem uso", "outro", "un")
+    livre = est.cadastrar("Sem uso", "outro", "un", marca="Marca Teste")
     assert est.excluir(livre) == "excluido"
     assert est.excluir(ids["Farinha de trigo"]) == "desativado"
     nomes_ativos = [i["nome"] for i in est.listar()]
@@ -136,7 +171,7 @@ def test_ct07_excluir_e_desativar(app, db):
 
 def test_ct08_compra_custo(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Farinha de trigo", "ingrediente", "g")
+    iid = est.cadastrar("Farinha de trigo", "ingrediente", "g", marca="Marca Teste")
     est.registrar_compra(iid, 2, 1, "kg", 1000)
     assert saldo(db, iid) == 2000 and custo(db, iid) == pytest.approx(0.5)   # 0,5 centavo/g = R$ 5,00/kg
     assert len(est.compras(iid)) == 1
@@ -144,7 +179,7 @@ def test_ct08_compra_custo(app, db):
 
 def test_ct09_custo_medio_ponderado(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Farinha de trigo", "ingrediente", "g")
+    iid = est.cadastrar("Farinha de trigo", "ingrediente", "g", marca="Marca Teste")
     est.registrar_compra(iid, 2, 1, "kg", 1000)
     est.registrar_compra(iid, 1, 1, "kg", 800)
     assert saldo(db, iid) == 3000 and custo(db, iid) * 1000 == pytest.approx(600)  # R$ 6,00/kg
@@ -152,27 +187,27 @@ def test_ct09_custo_medio_ponderado(app, db):
 
 def test_ct10_leite_condensado(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Leite condensado", "ingrediente", "g")
+    iid = est.cadastrar("Leite condensado", "ingrediente", "g", marca="Marca Teste")
     est.registrar_compra(iid, 4, 395, "g", 2760)
     assert custo(db, iid) * 1000 / 100 == pytest.approx(17.47, abs=0.005)
 
 
 def test_ct11_duzia(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Ovo", "ingrediente", "un")
+    iid = est.cadastrar("Ovo", "ingrediente", "un", marca="Marca Teste")
     est.registrar_compra(iid, 2, 1, "dz", 2400)
     assert saldo(db, iid) == 24 and custo(db, iid) == pytest.approx(100)
 
 
 def test_ct12_unidade_incompativel(cli, app, db):
-    iid = svc(app, db)[0].cadastrar("Farinha", "ingrediente", "g")
+    iid = svc(app, db)[0].cadastrar("Farinha", "ingrediente", "g", marca="Marca Teste")
     r = cli.post("/compras", data=dict(insumo_id=iid, qtd_embalagens="1", tamanho_embalagem="1",
                                        unidade_embalagem="ml", preco_total="5"), follow_redirects=True)
     assert "não é compatível" in flash(r) and saldo(db, iid) == 0
 
 
 def test_ct13_formatos_de_preco(cli, app, db):
-    iid = svc(app, db)[0].cadastrar("Farinha", "ingrediente", "g")
+    iid = svc(app, db)[0].cadastrar("Farinha", "ingrediente", "g", marca="Marca Teste")
     for preco in ("15,90", "1.234,56"):
         cli.post("/compras", data=dict(insumo_id=iid, qtd_embalagens="1", tamanho_embalagem="1",
                                        unidade_embalagem="kg", preco_total=preco))
@@ -184,7 +219,7 @@ def test_ct13_formatos_de_preco(cli, app, db):
 
 
 def test_ct14_quantidade_invalida(cli, app, db):
-    iid = svc(app, db)[0].cadastrar("Farinha", "ingrediente", "g")
+    iid = svc(app, db)[0].cadastrar("Farinha", "ingrediente", "g", marca="Marca Teste")
     for q in ("0", "-2"):
         cli.post("/compras", data=dict(insumo_id=iid, qtd_embalagens=q, tamanho_embalagem="1",
                                        unidade_embalagem="kg", preco_total="5"))
@@ -193,7 +228,7 @@ def test_ct14_quantidade_invalida(cli, app, db):
 
 def test_ct15_ajuste(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Farinha", "ingrediente", "g")
+    iid = est.cadastrar("Farinha", "ingrediente", "g", marca="Marca Teste")
     est.registrar_compra(iid, 3, 1, "kg", 1800)
     est.ajustar_saldo(iid, 1800)
     assert saldo(db, iid) == 1800
@@ -204,14 +239,14 @@ def test_ct15_ajuste(app, db):
 def test_ct16_ajuste_negativo(app, db):
     from services.util import RegraNegocio
     est = svc(app, db)[0]
-    iid = est.cadastrar("Farinha", "ingrediente", "g")
+    iid = est.cadastrar("Farinha", "ingrediente", "g", marca="Marca Teste")
     with pytest.raises(RegraNegocio, match="negativo"):
         est.ajustar_saldo(iid, -5)
 
 
 def test_ct17_ct18_alerta_minimo(cli, app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Farinha de trigo", "ingrediente", "g", 500)
+    iid = est.cadastrar("Farinha de trigo", "ingrediente", "g", 500, marca="Marca Teste")
     est.registrar_compra(iid, 400, 1, "g", 200)
     for pagina in ("/", "/insumos", "/receitas", "/relatorios"):
         html = cli.get(pagina).get_data(as_text=True)
@@ -222,7 +257,7 @@ def test_ct17_ct18_alerta_minimo(cli, app, db):
 
 
 def test_ct19_minimo_zero_sem_alerta(cli, app, db):
-    svc(app, db)[0].cadastrar("Sal", "ingrediente", "g", 0)
+    svc(app, db)[0].cadastrar("Sal", "ingrediente", "g", 0, marca="Marca Teste")
     assert "stock-alert-banner" not in cli.get("/").get_data(as_text=True)
 
 
@@ -690,7 +725,7 @@ def test_nf02_chave_estrangeira(app, db):
 
 def test_nf03_centavos(app, db):
     est = svc(app, db)[0]
-    iid = est.cadastrar("Bala", "ingrediente", "un")
+    iid = est.cadastrar("Bala", "ingrediente", "un", marca="Marca Teste")
     for _ in range(3):
         est.registrar_compra(iid, 1, 1, "un", 10)
     assert db.execute("SELECT SUM(preco_total_centavos) FROM compras").fetchone()[0] == 30

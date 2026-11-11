@@ -26,7 +26,7 @@
 <table class="table">
 <tr><th>Item</th><th>Tipo</th><th class="num">Quantidade</th><th class="num">Custo unit.</th><th class="num">Custo</th><th class="num">Disponível</th></tr>
 {% for it in c['itens'] %}
-<tr><td>{{ it['nome'] }}</td><td>{{ it['tipo'] }}</td><td class="num">{{ it['quantidade']|num(2) }} {{ it['unidade_base'] }}</td>
+<tr><td>{{ rotulo_insumo(it) }}</td><td>{{ it['tipo'] }}</td><td class="num">{{ it['quantidade']|num(2) }} {{ it['unidade_base'] }}</td>
 <td class="num">{{ custo_unit(it['custo_medio_centavos'], it['unidade_base']) }}</td>
 <td class="num">{{ it['custo_centavos']|reais }}</td>
 <td class="num">{% if it['disponivel'] + 0.000001 < it['quantidade'] %}<span class="selo selo-alerta">falta</span>{% endif %}{{ it['disponivel']|num(1) }}</td></tr>

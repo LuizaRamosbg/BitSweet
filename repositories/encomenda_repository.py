@@ -19,17 +19,26 @@ class ClienteRepository:
 
     def inserir(self, d):
         cur = self.conn.execute(
-            "INSERT INTO clientes (nome, telefone, email, endereco, observacoes) VALUES (?, ?, ?, ?, ?)",
-            (d["nome"], d["telefone"], d["email"], d["endereco"], d["observacoes"]))
+            """INSERT INTO clientes (nome, telefone, email, endereco, observacoes, aniversario_dia, aniversario_mes)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (d["nome"], d["telefone"], d["email"], d["endereco"], d["observacoes"], d["aniversario_dia"],
+             d["aniversario_mes"]))
         return cur.lastrowid
 
     def atualizar(self, cliente_id, d):
         self.conn.execute(
-            "UPDATE clientes SET nome = ?, telefone = ?, email = ?, endereco = ?, observacoes = ? WHERE id = ?",
-            (d["nome"], d["telefone"], d["email"], d["endereco"], d["observacoes"], cliente_id))
+            """UPDATE clientes SET nome = ?, telefone = ?, email = ?, endereco = ?, observacoes = ?,
+                      aniversario_dia = ?, aniversario_mes = ? WHERE id = ?""",
+            (d["nome"], d["telefone"], d["email"], d["endereco"], d["observacoes"], d["aniversario_dia"],
+             d["aniversario_mes"], cliente_id))
 
     def excluir(self, cliente_id):
         self.conn.execute("DELETE FROM clientes WHERE id = ?", (cliente_id,))
+
+    def com_aniversario(self):
+        return self.conn.execute(
+            """SELECT id, nome, telefone, aniversario_dia, aniversario_mes FROM clientes
+               WHERE aniversario_dia IS NOT NULL AND aniversario_mes IS NOT NULL""").fetchall()
 
     def tem_encomendas(self, cliente_id):
         return self.conn.execute("SELECT 1 FROM encomendas WHERE cliente_id = ? LIMIT 1", (cliente_id,)).fetchone()
@@ -78,6 +87,13 @@ class EncomendaRepository:
                       ei.quantidade * ei.preco_unit_centavos AS subtotal
                FROM encomenda_itens ei JOIN receitas r ON r.id = ei.receita_id
                WHERE ei.encomenda_id = ?""", (encomenda_id,)).fetchall()
+
+    def itens_sem_baixa(self, ignorar_id=None):
+        """Itens de encomendas em aberto que ainda não baixaram o estoque (o estoque já está 'comprometido')."""
+        return self.conn.execute(
+            """SELECT ei.receita_id, ei.quantidade FROM encomenda_itens ei JOIN encomendas e ON e.id = ei.encomenda_id
+               WHERE e.estoque_baixado = 0 AND e.status NOT IN ('Cancelado', 'Entregue') AND e.id <> ?""",
+            (ignorar_id or 0,)).fetchall()
 
     def atualizar_status(self, encomenda_id, status, data_entregue=None):
         self.conn.execute("UPDATE encomendas SET status = ?, data_entregue = ? WHERE id = ?",

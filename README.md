@@ -7,7 +7,9 @@ Sistema de gestão para doceria: estoque, fichas técnicas, precificação, enco
 pip install -r requirements.txt
 python app.py        # ou: python main.py
 ```
-Abra http://127.0.0.1:5000. Na primeira execução é criado o `bitsweet.db`; se existir o `doceria.db` do app desktop antigo, os insumos e receitas são importados automaticamente (unidades convertidas para g/ml/un).
+Abra http://127.0.0.1:5000. No primeiro acesso o sistema pede para criar o usuário administrador (usuário e senha); depois disso todas as telas exigem login, e outros usuários podem ser criados em **Usuários**. A senha é guardada só como hash. O cookie de login é assinado com a variável `BITSWEET_SECRET_KEY` ou, se ela não existir, com uma chave gerada em `.bitsweet_secret_key` ao lado do banco. A porta pode ser trocada com `PORT`.
+
+Na primeira execução é criado o `bitsweet.db`; se existir o `doceria.db` do app desktop antigo, os insumos e receitas são importados automaticamente (unidades convertidas para g/ml/un).
 
 ## Docker
 ```bash
@@ -20,7 +22,7 @@ O banco fica em `./data/bitsweet.db` (variável `BITSWEET_DB_PATH`).
 pip install -r requirements-dev.txt
 python -m pytest -v tests/
 ```
-`tests/test_lotes.py` cobre lotes e FEFO; `tests/test_plano.py` executa o plano de testes (um teste por caso, CT-01 a CT-70 e NF-01 a NF-06).
+`tests/test_lotes.py` cobre lotes e FEFO; `tests/test_plano.py` executa o plano de testes (um teste por caso, CT-01 a CT-70 e NF-01 a NF-06); `tests/test_novidades.py` cobre login, marca, aniversário e alerta de estoque.
 
 ## Estrutura
 ```
@@ -58,5 +60,9 @@ tests/                 testes automatizados (pytest)
 | 19 Consumo | Consumo por período, dias de cobertura e sugestão de compra |
 | 20 KPIs | Mais vendidos, conclusão, pontualidade, lead time, porções/dia |
 | 21 Exportação | CSV (abre no Excel) e PDF de cada relatório |
+| — Login | Usuário e senha em todas as telas; primeiro acesso cria o administrador; Usuários (criar, excluir, trocar senha) |
+| — Marca do insumo | Marca obrigatória; mesmo nome só com marca diferente; a tela de cadastro lista os já existentes com o mesmo nome. Bancos antigos recebem como marca o fornecedor da última compra |
+| — Aniversário | Dia e mês opcionais no cliente; aniversariantes dos próximos 7 dias na tela inicial |
+| — Alerta de estoque na encomenda | Ao montar a encomenda, lista os insumos que faltam (considerando o que outras encomendas ainda não produzidas já reservaram); repete o aviso ao salvar e na página da encomenda |
 
 Valores monetários são guardados em centavos; quantidades na unidade base.

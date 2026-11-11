@@ -54,7 +54,7 @@ new Chart(document.getElementById('lucratividadeChart'), {
 <div class="tabela-dashboard">
 <table class="table"><tr><th>Insumo</th><th class="num">Consumido</th><th class="num">Custo consumido</th><th class="num">Saldo</th><th class="num">Cobertura (dias)</th><th class="num">Sugestão de compra</th></tr>
 {% for i in consumo['insumos'] %}
-<tr><td><a href="{{ url_for('insumo_detalhe', iid=i['id']) }}">{{ i['nome'] }}</a></td>
+<tr><td><a href="{{ url_for('insumo_detalhe', iid=i['id']) }}">{{ rotulo_insumo(i) }}</a></td>
 <td class="num">{{ i['consumido']|num(1) }} {{ i['unidade_base'] }}</td><td class="num">{{ i['custo_consumido']|reais }}</td>
 <td class="num">{{ i['saldo']|num(1) }}</td>
 <td class="num">{{ i['dias_cobertura']|num(0) if i['dias_cobertura'] is not none else '—' }}</td>

@@ -5,7 +5,7 @@
 {% if not clientes %}
   <div class="card-dashboard">Cadastre um cliente antes. <a href="{{ url_for('cliente_form') }}">Novo cliente</a></div>
 {% else %}
-<form data-rascunho method="post" class="formulario">
+<form data-rascunho method="post" class="formulario" id="form-encomenda">
   <div class="row-campos">
     <label class="form-group">Cliente<select class="form-control" name="cliente_id" required>
       {% for c in clientes %}<option value="{{ c['id'] }}" {{ 'selected' if cliente_sel == c['id'] }}>{{ c['nome'] }}</option>{% endfor %}
@@ -24,6 +24,7 @@
     </div>
   </div>
   <button type="button" class="btn" onclick="adicionarItem()">+ Adicionar produto</button>
+  <div id="alerta-estoque" class="alerta-estoque-encomenda" role="alert" hidden></div>
   <p class="texto-suave">O valor é calculado pelo preço de venda de cada produto. Os preços ficam congelados neste pedido.</p>
   <label class="form-group">Observações<textarea class="form-control" name="observacoes" rows="2"></textarea></label>
   <div class="acoes"><button class="btn">Registrar encomenda</button>
@@ -41,6 +42,37 @@ function removerItem(botao) {
     const lista = document.getElementById('lista-itens'), linha = botao.closest('.item-encomenda');
     if (lista.children.length > 1) linha.remove();
     else linha.querySelectorAll('input, select').forEach(c => c.value = '');
+    verificarEstoque();
 }
+// Alerta de estoque: consulta o servidor com os itens preenchidos e lista os insumos que faltam
+let timerEstoque = null, consultaAtual = 0;
+function verificarEstoque() {
+    clearTimeout(timerEstoque);
+    timerEstoque = setTimeout(async function () {
+        const form = document.getElementById('form-encomenda'), caixa = document.getElementById('alerta-estoque');
+        if (!form) return;
+        const dados = new FormData();
+        form.querySelectorAll('[name=item_receita], [name=item_qtd], [name=data_entrega]').forEach(c => dados.append(c.name, c.value));
+        const id = ++consultaAtual;
+        try {
+            const r = await fetch('{{ url_for("encomenda_faltas_estoque") }}', {method: 'POST', body: dados, credentials: 'same-origin'});
+            const j = await r.json();
+            if (id !== consultaAtual) return;                 // chegou uma resposta mais nova
+            const faltas = j.faltas || [];
+            if (!faltas.length) { caixa.hidden = true; caixa.innerHTML = ''; return; }
+            const fmt = n => Number(n.toFixed(2)).toLocaleString('pt-BR');
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+            caixa.innerHTML = '<strong>⚠ Estoque insuficiente para esta encomenda.</strong> Você pode registrá-la, mas precisa comprar antes de colocá-la em produção:<ul>'
+                + faltas.map(f => '<li><strong>' + esc(f.nome) + '</strong>: precisa ' + fmt(f.necessario) + ' ' + f.unidade
+                    + ', há ' + fmt(f.disponivel) + ' ' + f.unidade
+                    + (f.comprometido > 1e-9 ? ' (' + fmt(f.comprometido) + ' já reservado para outras encomendas)' : '')
+                    + ' → <strong>faltam ' + fmt(f.falta) + ' ' + f.unidade + '</strong></li>').join('') + '</ul>';
+            caixa.hidden = false;
+        } catch (e) { /* sem conexão: o alerta também aparece depois de registrar */ }
+    }, 300);
+}
+document.getElementById('form-encomenda')?.addEventListener('input', verificarEstoque);
+document.getElementById('form-encomenda')?.addEventListener('change', verificarEstoque);
+window.addEventListener('load', verificarEstoque);
 </script>
 {% endblock %}

@@ -62,7 +62,7 @@ class RelatorioService:
     def consumo(self, inicio, fim):
         dias = _dias(inicio, fim)
         linhas = [dict(r) for r in self.conn.execute(
-            """SELECT i.id, i.nome, i.tipo, i.unidade_base, i.saldo, i.estoque_minimo,
+            """SELECT i.id, i.nome, i.marca, i.tipo, i.unidade_base, i.saldo, i.estoque_minimo,
                       COALESCE(SUM(CASE WHEN m.origem = 'producao' THEN -m.quantidade END), 0) AS consumido,
                       COALESCE(SUM(CASE WHEN m.origem = 'producao' THEN -m.quantidade * m.custo_unit_centavos END), 0)
                           AS custo_consumido,
@@ -70,7 +70,7 @@ class RelatorioService:
                FROM insumos i
                LEFT JOIN movimentacoes m ON m.insumo_id = i.id AND m.data BETWEEN ? AND ?
                WHERE i.ativo = 1
-               GROUP BY i.id ORDER BY custo_consumido DESC, i.nome""", (inicio, fim))]
+               GROUP BY i.id ORDER BY custo_consumido DESC, i.nome, i.marca""", (inicio, fim))]
         for l in linhas:
             l["media_diaria"] = l["consumido"] / dias
             l["dias_cobertura"] = l["saldo"] / l["media_diaria"] if l["media_diaria"] > 0 else None

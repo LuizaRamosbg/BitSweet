@@ -8,6 +8,14 @@
   <div class="card-dashboard"><span>Margem de lucro</span><h2>{{ lucro.margem|num(1) }}%</h2></div>
   <div class="card-dashboard"><span>Encomendas em aberto</span><h2>{{ kpis.em_aberto }}</h2></div>
 </div>
+{% if aniversariantes %}
+<h3>🎂 Aniversariantes dos próximos 7 dias</h3>
+<div class="card-dashboard"><ul style="margin:0">
+{% for a in aniversariantes %}<li><a href="{{ url_for('cliente_detalhe', cid=a['id']) }}">{{ a['nome'] }}</a> ·
+  {{ aniversario(a) }} · <strong>{% if a['em_dias'] == 0 %}hoje!{% elif a['em_dias'] == 1 %}amanhã{% else %}em {{ a['em_dias'] }} dias{% endif %}</strong>
+  {% if a['telefone'] %}<span class="texto-suave">· {{ a['telefone'] }}</span>{% endif %}</li>{% endfor %}
+</ul></div>
+{% endif %}
 <h3>Encomendas em andamento</h3>
 <div class="tabela-dashboard">
 {% if abertas %}

@@ -15,7 +15,7 @@ class InsumoRepository:
     def listar(self, hoje, incluir_inativos=False):
         sql = (f"SELECT i.*, {self._DISPONIVEL} AS disponivel, {self._PROXIMA} AS proxima_validade, "
                f"{self._VENCIDO} AS vencido FROM insumos i"
-               + ("" if incluir_inativos else " WHERE i.ativo = 1") + " ORDER BY i.nome")
+               + ("" if incluir_inativos else " WHERE i.ativo = 1") + " ORDER BY i.nome, i.marca")
         return self.conn.execute(sql, {"hoje": hoje}).fetchall()
 
     def disponivel(self, insumo_id, hoje):
@@ -27,18 +27,19 @@ class InsumoRepository:
         return self.conn.execute("SELECT * FROM insumos WHERE id = ?", (insumo_id,)).fetchone()
 
     def nomes(self):
-        return self.conn.execute("SELECT id, nome FROM insumos").fetchall()
+        return self.conn.execute(
+            "SELECT id, nome, marca, tipo, unidade_base, ativo FROM insumos ORDER BY nome, marca").fetchall()
 
-    def inserir(self, nome, tipo, unidade_base, estoque_minimo):
+    def inserir(self, nome, tipo, unidade_base, estoque_minimo, marca):
         cur = self.conn.execute(
-            "INSERT INTO insumos (nome, tipo, unidade_base, estoque_minimo) VALUES (?, ?, ?, ?)",
-            (nome, tipo, unidade_base, estoque_minimo))
+            "INSERT INTO insumos (nome, marca, tipo, unidade_base, estoque_minimo) VALUES (?, ?, ?, ?, ?)",
+            (nome, marca, tipo, unidade_base, estoque_minimo))
         return cur.lastrowid
 
-    def atualizar_cadastro(self, insumo_id, nome, tipo, unidade_base, estoque_minimo):
+    def atualizar_cadastro(self, insumo_id, nome, tipo, unidade_base, estoque_minimo, marca):
         self.conn.execute(
-            "UPDATE insumos SET nome = ?, tipo = ?, unidade_base = ?, estoque_minimo = ? WHERE id = ?",
-            (nome, tipo, unidade_base, estoque_minimo, insumo_id))
+            "UPDATE insumos SET nome = ?, marca = ?, tipo = ?, unidade_base = ?, estoque_minimo = ? WHERE id = ?",
+            (nome, marca, tipo, unidade_base, estoque_minimo, insumo_id))
 
     def atualizar_saldo_custo(self, insumo_id, saldo, custo_medio_centavos):
         self.conn.execute("UPDATE insumos SET saldo = ?, custo_medio_centavos = ? WHERE id = ?",
@@ -77,7 +78,7 @@ class InsumoRepository:
 
     def compras_recentes(self, limite=20):
         return self.conn.execute(
-            """SELECT c.*, i.nome, i.unidade_base, l.validade, l.codigo FROM compras c
+            """SELECT c.*, i.nome, i.marca, i.unidade_base, l.validade, l.codigo FROM compras c
                JOIN insumos i ON i.id = c.insumo_id LEFT JOIN lotes l ON l.compra_id = c.id
                ORDER BY c.data DESC, c.id DESC LIMIT ?""", (limite,)).fetchall()
 
@@ -108,7 +109,7 @@ class InsumoRepository:
 
     def buscar_lote(self, lote_id):
         return self.conn.execute(
-            "SELECT l.*, i.nome, i.unidade_base FROM lotes l JOIN insumos i ON i.id = l.insumo_id WHERE l.id = ?",
+            "SELECT l.*, i.nome, i.marca, i.unidade_base FROM lotes l JOIN insumos i ON i.id = l.insumo_id WHERE l.id = ?",
             (lote_id,)).fetchone()
 
     def lotes_com_saldo(self, insumo_id, hoje=None):
@@ -130,7 +131,7 @@ class InsumoRepository:
     def lotes_em_alerta(self, hoje, limite):
         """Lotes com saldo vencidos ou que vencem até `limite` (inclusive)."""
         return self.conn.execute(
-            """SELECT l.*, i.nome, i.unidade_base FROM lotes l JOIN insumos i ON i.id = l.insumo_id
+            """SELECT l.*, i.nome, i.marca, i.unidade_base FROM lotes l JOIN insumos i ON i.id = l.insumo_id
                WHERE i.ativo = 1 AND l.saldo > 0 AND l.validade IS NOT NULL AND l.validade <= ?
                ORDER BY l.validade, i.nome""", (limite,)).fetchall()
 

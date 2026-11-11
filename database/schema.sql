@@ -3,7 +3,8 @@
 
 CREATE TABLE IF NOT EXISTS insumos (                       -- RF-01 / RF-04 / RF-05
     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome                 TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+    nome                 TEXT    NOT NULL COLLATE NOCASE,
+    marca                TEXT    NOT NULL DEFAULT '' COLLATE NOCASE,   -- mesmo nome só com marca diferente
     tipo                 TEXT    NOT NULL DEFAULT 'ingrediente'
                          CHECK (tipo IN ('ingrediente', 'embalagem', 'outro')),
     unidade_base         TEXT    NOT NULL CHECK (unidade_base IN ('g', 'ml', 'un')),
@@ -90,7 +91,9 @@ CREATE TABLE IF NOT EXISTS clientes (                      -- RF-13
     telefone TEXT,
     email    TEXT,
     endereco TEXT,
-    observacoes TEXT
+    observacoes TEXT,
+    aniversario_dia INTEGER CHECK (aniversario_dia BETWEEN 1 AND 31),   -- opcional (dia e mês)
+    aniversario_mes INTEGER CHECK (aniversario_mes BETWEEN 1 AND 12)
 );
 
 CREATE TABLE IF NOT EXISTS encomendas (                    -- RF-14 / RF-15 / RF-16
@@ -126,6 +129,14 @@ CREATE TABLE IF NOT EXISTS pagamentos (                    -- RF-16
     forma          TEXT
 );
 
+CREATE TABLE IF NOT EXISTS usuarios (                      -- login do sistema
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario    TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+    senha_hash TEXT    NOT NULL,
+    criado_em  TEXT    NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_insumo_nome_marca ON insumos (nome, marca);
 CREATE INDEX IF NOT EXISTS ix_lotes_fefo       ON lotes (insumo_id, validade, data_entrada);
 CREATE INDEX IF NOT EXISTS ix_mov_insumo_data ON movimentacoes (insumo_id, data);
 CREATE INDEX IF NOT EXISTS ix_enc_cliente     ON encomendas (cliente_id, data_pedido);

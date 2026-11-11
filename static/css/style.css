@@ -31,6 +31,8 @@ body {
 
 .top-nav {
     display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: center;
     justify-content: space-between;
 }
@@ -122,6 +124,7 @@ body {
 
 .content {
     flex: 1;
+    min-width: 0;                   /* deixa as tabelas rolarem dentro da caixa em vez de alargar a página */
     background: #f5f5f5;
     padding: 30px;
 }
@@ -162,6 +165,75 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .flash-error { animation: none; }
 }
+
+.flash-warning {
+    border-left: 6px solid #b8860b;
+    background: #fff8e1;
+    color: #5c4300;
+    font-weight: 500;
+}
+
+.flash-warning::before {
+    content: "⚠ ";
+}
+
+.alerta-estoque-encomenda {
+    margin: 12px 0;
+    padding: 12px 16px;
+    border-left: 6px solid #b8860b;
+    background: #fff8e1;
+    color: #5c4300;
+}
+
+.alerta-estoque-encomenda ul { margin: 6px 0 0; padding-left: 20px; }
+.alerta-estoque-encomenda[hidden] { display: none; }
+
+.usuario-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 16px;
+    white-space: nowrap;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.usuario-nav a { color: inherit; font-weight: 500; }
+.usuario-nav form { margin: 0; }
+
+.lista-semelhantes {
+    margin: -4px 0 12px;
+    padding: 10px 14px;
+    border-left: 4px solid #b8860b;
+    background: #fff8e1;
+    color: #5c4300;
+    font-size: .95rem;
+}
+
+.lista-semelhantes ul { margin: 4px 0 0; padding-left: 20px; }
+.lista-semelhantes .igual { font-weight: 700; color: #702020; }
+.lista-semelhantes[hidden] { display: none; }
+
+.tela-login {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    padding: 16px;
+}
+
+.cartao-login {
+    width: 100%;
+    max-width: 380px;
+    background: #fff;
+    padding: 28px 28px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
+}
+
+.cartao-login h1 { font-size: 1.6rem; margin: 0 0 4px; }
+.cartao-login .btn { width: 100%; margin-top: 8px; }
 
 .aviso-rascunho {
     display: flex;

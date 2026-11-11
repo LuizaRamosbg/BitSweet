@@ -18,7 +18,7 @@ def dia(n):
 
 def farinha(app, db, minimo=0):
     est = svc(app, db)[0]
-    return est, est.cadastrar("Farinha de trigo", "ingrediente", "g", minimo)
+    return est, est.cadastrar("Farinha de trigo", "ingrediente", "g", minimo, marca="Marca Teste")
 
 
 def compra(est, iid, gramas, preco_centavos, validade=None, data=None, codigo=None):
@@ -142,7 +142,7 @@ def test_l10_custo_medio_acompanha_os_lotes(app, db):
 
 def test_l11_receita_e_minimo_ignoram_vencidos(cli, app, db):
     est, rec = svc(app, db)[:2]
-    iid = est.cadastrar("Ovo", "ingrediente", "un", 6)
+    iid = est.cadastrar("Ovo", "ingrediente", "un", 6, marca="Marca Teste")
     est.registrar_compra(iid, 1, 12, "un", 1200, data=dia(-30), validade=dia(-1))
     est.registrar_compra(iid, 1, 4, "un", 400, validade=dia(10))
     rid = rec.salvar({"nome": "Omelete", "rendimento": 1}, [(iid, 2)], [])
@@ -155,7 +155,7 @@ def test_l11_receita_e_minimo_ignoram_vencidos(cli, app, db):
 
 def test_l12_encomenda_em_producao_usa_fefo(app, db):
     est, rec, cli_s, enc, _ = svc(app, db)
-    iid = est.cadastrar("Leite condensado", "ingrediente", "g")
+    iid = est.cadastrar("Leite condensado", "ingrediente", "g", marca="Marca Teste")
     tardio = est.registrar_compra(iid, 2, 395, "g", 1400, validade=dia(120))["lote_id"]
     cedo = est.registrar_compra(iid, 2, 395, "g", 1400, validade=dia(20))["lote_id"]
     rid = rec.salvar({"nome": "Brigadeiro", "rendimento": 30, "preco_venda_centavos": 200}, [(iid, 395)], [])

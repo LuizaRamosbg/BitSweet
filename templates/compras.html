@@ -3,12 +3,12 @@
 {% block conteudo %}
 <h2>Registrar compra</h2>
 <div class="card-dashboard">
-  <p class="texto-suave" style="margin-top:0">Informe o preço total pago, a quantidade em cada embalagem e a validade. Cada compra vira um lote, e o sistema consome primeiro o lote que vence antes.</p>
+  <p class="texto-suave" style="margin-top:0">A marca faz parte do insumo: para outra marca do mesmo produto, cadastre-a em Estoque. Informe o preço total pago, a quantidade em cada embalagem e a validade. Cada compra vira um lote, e o sistema consome primeiro o lote que vence antes.</p>
   <form method="post" id="form-compra" data-rascunho class="formulario" style="padding:0;border:0">
     <div class="row-campos">
       <label class="form-group">Insumo
         <select class="form-control" name="insumo_id" id="insumo" required>
-          {% for i in insumos %}<option value="{{ i['id'] }}" data-base="{{ i['unidade_base'] }}" {{ 'selected' if selecionado == i['id'] }}>{{ i['nome'] }}</option>{% endfor %}
+          {% for i in insumos %}<option value="{{ i['id'] }}" data-base="{{ i['unidade_base'] }}" {{ 'selected' if selecionado == i['id'] }}>{{ rotulo_insumo(i) }}</option>{% endfor %}
         </select></label>
       <label class="form-group">Data<input class="form-control" type="date" name="data" value="{{ hoje }}"></label>
       <label class="form-group">Qtd. de embalagens<input class="form-control" name="qtd_embalagens" value="1" inputmode="decimal" required></label>
@@ -17,10 +17,9 @@
       <label class="form-group">Preço total pago (R$)<input class="form-control" name="preco_total" inputmode="decimal" required placeholder="Ex.: 15,90"></label>
       <label class="form-group">Validade do lote<input class="form-control" type="date" name="validade" min="{{ hoje }}"></label>
       <label class="form-group">Código do lote (opcional)<input class="form-control" name="codigo_lote" placeholder="Como aparece na embalagem"></label>
-      <label class="form-group">Fornecedor (opcional)<input class="form-control" name="fornecedor"></label>
     </div>
     <button class="btn">Registrar compra</button>
-    <a class="btn btn-secundario" href="{{ url_for('insumos') }}">Cadastrar novo insumo</a>
+    <a class="btn btn-secundario" href="{{ url_for('insumos') }}">Cadastrar novo insumo / outra marca</a>
   </form>
 </div>
 <script>
@@ -37,7 +36,7 @@
 <div class="tabela-dashboard">
 <table class="table"><tr><th>Data</th><th>Insumo</th><th>Embalagens</th><th>Validade</th><th class="num">Preço</th><th class="num">Custo unit.</th></tr>
 {% for c in recentes %}
-<tr><td>{{ c['data']|data }}</td><td><a href="{{ url_for('insumo_detalhe', iid=c['insumo_id']) }}">{{ c['nome'] }}</a></td>
+<tr><td>{{ c['data']|data }}</td><td><a href="{{ url_for('insumo_detalhe', iid=c['insumo_id']) }}">{{ rotulo_insumo(c) }}</a></td>
 <td>{{ c['qtd_embalagens']|num(0) }} × {{ c['tamanho_embalagem']|num(0) }} {{ c['unidade_embalagem'] }}</td>
 <td>{{ c['validade']|data if c['validade'] else '—' }}</td>
 <td class="num">{{ c['preco_total_centavos']|reais }}</td>

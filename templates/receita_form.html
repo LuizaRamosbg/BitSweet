@@ -23,7 +23,7 @@
     <div class="ingrediente-row">
       <select class="form-control" name="item_insumo" aria-label="Insumo" onchange="mostrarUnidade(this)">
         <option value="">Selecione um insumo</option>
-        {% for i in insumos %}<option value="{{ i['id'] }}" data-unidade="{{ i['unidade_base'] }}" {{ 'selected' if it and it['insumo_id'] == i['id'] }}>{{ i['nome'] }}</option>{% endfor %}
+        {% for i in insumos %}<option value="{{ i['id'] }}" data-unidade="{{ i['unidade_base'] }}" {{ 'selected' if it and it['insumo_id'] == i['id'] }}>{{ rotulo_insumo(i) }}</option>{% endfor %}
       </select>
       <input class="form-control" name="item_qtd" inputmode="decimal" placeholder="Quantidade" aria-label="Quantidade" value="{{ it['quantidade']|num(2) if it }}">
       <span class="ingredient-unit">{{ it['unidade_base'] if it else '' }}</span>

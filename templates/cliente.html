@@ -4,6 +4,7 @@
 {% set c = h['cliente'] %}
 <h2>{{ c['nome'] }}</h2>
 <p class="texto-suave">{{ c['telefone'] or '' }} {{ c['email'] or '' }} {{ c['endereco'] or '' }}</p>
+{% if aniversario(c) %}<p>🎂 Aniversário: <strong>{{ aniversario(c) }}</strong></p>{% endif %}
 {% if c['observacoes'] %}<p>{{ c['observacoes'] }}</p>{% endif %}
 <div class="acoes">
   <a class="btn btn-secundario btn-peq" href="{{ url_for('cliente_form', cid=c['id']) }}">Editar</a>

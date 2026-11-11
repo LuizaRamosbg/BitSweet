@@ -48,7 +48,7 @@ class ReceitaRepository:
 
     def itens(self, receita_id):
         return self.conn.execute(
-            """SELECT ri.insumo_id, ri.quantidade, i.nome, i.tipo, i.unidade_base, i.saldo,
+            """SELECT ri.insumo_id, ri.quantidade, i.nome, i.marca, i.tipo, i.unidade_base, i.saldo,
                       (SELECT COALESCE(SUM(l.saldo), 0) FROM lotes l WHERE l.insumo_id = i.id
                          AND (l.validade IS NULL OR l.validade >= date('now', 'localtime'))) AS disponivel,
                       i.custo_medio_centavos

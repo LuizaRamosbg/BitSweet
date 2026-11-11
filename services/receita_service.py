@@ -3,7 +3,7 @@ import math
 
 from repositories.receita_repository import ReceitaRepository
 from services.estoque_service import EstoqueService
-from services.util import RegraNegocio, chave_nome, hoje, validar_nome
+from services.util import RegraNegocio, chave_nome, hoje, rotulo_insumo, validar_nome
 
 
 class ReceitaService:
@@ -139,7 +139,7 @@ class ReceitaService:
         if not itens:
             raise RegraNegocio(f"A receita {r['nome']} não tem insumos cadastrados.")
 
-        faltas = [f"{it['nome']} (precisa {it['quantidade'] * lotes:g} {it['unidade_base']}, "
+        faltas = [f"{rotulo_insumo(it)} (precisa {it['quantidade'] * lotes:g} {it['unidade_base']}, "
                   f"há {it['disponivel']:g} dentro da validade)" for it in itens
                   if it["disponivel"] + 1e-9 < it["quantidade"] * lotes]
         if faltas:

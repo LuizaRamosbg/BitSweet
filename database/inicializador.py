@@ -17,6 +17,11 @@ _UNIDADES_ANTIGAS = {"g": ("g", 1), "ml": ("ml", 1), "Un": ("un", 1), "Kg": ("g"
 def inicializar(caminho=None):
     conn = conectar(caminho)
     _adicionar_coluna_lote(conn)          # bancos criados antes dos lotes
+    _migrar_marca_insumos(conn)           # bancos criados antes da marca (nome deixa de ser único)
+    _garantir_coluna(conn, "clientes", "aniversario_dia",
+                     "INTEGER CHECK (aniversario_dia BETWEEN 1 AND 31)")
+    _garantir_coluna(conn, "clientes", "aniversario_mes",
+                     "INTEGER CHECK (aniversario_mes BETWEEN 1 AND 12)")
     conn.executescript(SCHEMA.read_text(encoding="utf-8"))
     conn.commit()
     vazio = conn.execute("SELECT COUNT(*) FROM insumos").fetchone()[0] == 0
@@ -34,6 +39,59 @@ def _adicionar_coluna_lote(conn):
     if "lote_id" not in colunas:
         conn.execute("ALTER TABLE movimentacoes ADD COLUMN lote_id INTEGER REFERENCES lotes(id)")
         conn.commit()
+
+
+def _colunas(conn, tabela):
+    return [c[1] for c in conn.execute(f"PRAGMA table_info({tabela})")]
+
+
+def _garantir_coluna(conn, tabela, coluna, ddl):
+    colunas = _colunas(conn, tabela)
+    if colunas and coluna not in colunas:
+        conn.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {ddl}")
+        conn.commit()
+
+
+def _migrar_marca_insumos(conn):
+    """Recria a tabela de insumos com a coluna `marca` e sem o UNIQUE no nome (SQLite não remove
+    restrições com ALTER TABLE). A marca é preenchida com o fornecedor da compra mais recente."""
+    colunas = _colunas(conn, "insumos")
+    if not colunas or "marca" in colunas:
+        return
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        conn.executescript("""
+            BEGIN;
+            CREATE TABLE insumos_nova (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome                 TEXT    NOT NULL COLLATE NOCASE,
+                marca                TEXT    NOT NULL DEFAULT '' COLLATE NOCASE,
+                tipo                 TEXT    NOT NULL DEFAULT 'ingrediente'
+                                     CHECK (tipo IN ('ingrediente', 'embalagem', 'outro')),
+                unidade_base         TEXT    NOT NULL CHECK (unidade_base IN ('g', 'ml', 'un')),
+                saldo                REAL    NOT NULL DEFAULT 0 CHECK (saldo >= 0),
+                custo_medio_centavos REAL    NOT NULL DEFAULT 0,
+                estoque_minimo       REAL    NOT NULL DEFAULT 0 CHECK (estoque_minimo >= 0),
+                ativo                INTEGER NOT NULL DEFAULT 1
+            );
+            INSERT INTO insumos_nova (id, nome, tipo, unidade_base, saldo, custo_medio_centavos, estoque_minimo, ativo)
+                SELECT id, nome, tipo, unidade_base, saldo, custo_medio_centavos, estoque_minimo, ativo FROM insumos;
+            DROP TABLE insumos;
+            ALTER TABLE insumos_nova RENAME TO insumos;
+            COMMIT;
+        """)
+        tem_compras = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'compras'").fetchone()
+        if tem_compras:
+            conn.execute("""
+                UPDATE insumos SET marca = COALESCE((
+                    SELECT TRIM(c.fornecedor) FROM compras c
+                    WHERE c.insumo_id = insumos.id AND TRIM(COALESCE(c.fornecedor, '')) <> ''
+                    ORDER BY c.data DESC, c.id DESC LIMIT 1), '')""")
+            conn.commit()
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
 
 
 def criar_lotes_iniciais(conn):

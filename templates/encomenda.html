@@ -10,6 +10,14 @@
   <div class="card-dashboard"><span>Entrega prevista</span><h2>{{ e['data_entrega_prevista']|data }}</h2></div>
 </div>
 
+{% if d['faltas'] %}
+<div class="alerta-estoque-encomenda" role="alert">
+  <strong>⚠ Estoque insuficiente para produzir esta encomenda.</strong> Compre antes de mudar o status para "Em Produção":
+  <ul>{% for f in d['faltas'] %}<li><a href="{{ url_for('compras', insumo=f['insumo_id']) }}">{{ f['nome'] }}</a>: precisa {{ f['necessario']|num(2) }} {{ f['unidade'] }},
+    há {{ f['disponivel']|num(2) }} {{ f['unidade'] }}{% if f['comprometido'] > 0.000000001 %} ({{ f['comprometido']|num(2) }} já reservado para outras encomendas){% endif %}
+    → <strong>faltam {{ f['falta']|num(2) }} {{ f['unidade'] }}</strong></li>{% endfor %}</ul>
+</div>
+{% endif %}
 <h3>Itens</h3>
 <div class="tabela-dashboard">
 <table class="table"><tr><th>Produto</th><th class="num">Qtd (porções)</th><th class="num">Preço unit.</th><th class="num">Subtotal</th><th class="num">Custo unit.</th><th class="num">Lucro</th></tr>

@@ -1,13 +1,17 @@
 """Módulo 4 - Gestão de Encomendas (RF-13 a RF-17)."""
+import datetime
+
 from repositories.encomenda_repository import ClienteRepository, EncomendaRepository
 from services.receita_service import ReceitaService
-from services.util import RegraNegocio, data_valida, hoje
+from services.util import RegraNegocio, data_valida, hoje, rotulo_insumo
 
 # RF-15: fluxo conforme o requisito. "Cancelado" é um estado extra para pedidos desistidos.
 STATUS = ("Pendente", "Em Produção", "Pago", "Pronto", "Entregue")
 STATUS_TODOS = STATUS + ("Cancelado",)
 STATUS_QUE_BAIXAM_ESTOQUE = ("Em Produção", "Pronto", "Entregue")
 STATUS_PAGAMENTO = ("Pendente", "Parcial", "Total")
+MESES = ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+         "novembro", "dezembro")
 FORMAS_PAGAMENTO = ("Pix", "Dinheiro", "Cartão de crédito", "Cartão de débito", "Transferência", "Outro")
 
 
@@ -26,7 +30,48 @@ class ClienteService:
             raise RegraNegocio("Informe o nome do cliente.")
         if dados["email"] and "@" not in dados["email"]:
             raise RegraNegocio("E-mail inválido.")
+        dados["aniversario_dia"], dados["aniversario_mes"] = ClienteService._aniversario(
+            d.get("aniversario_dia"), d.get("aniversario_mes"))
         return dados
+
+    @staticmethod
+    def _aniversario(dia, mes):
+        """Aniversário opcional (só dia e mês). Informe os dois ou nenhum."""
+        dia, mes = str(dia or "").strip(), str(mes or "").strip()
+        if not dia and not mes:
+            return None, None
+        if not dia or not mes:
+            raise RegraNegocio("Para o aniversário, informe o dia e o mês (ou deixe os dois em branco).")
+        try:
+            dia, mes = int(dia), int(mes)
+            datetime.date(2000, mes, dia)                    # 2000 é bissexto: aceita 29/02
+        except ValueError:
+            raise RegraNegocio("Data de aniversário inválida.")
+        return dia, mes
+
+    @staticmethod
+    def aniversario_texto(c):
+        if not c["aniversario_dia"] or not c["aniversario_mes"]:
+            return None
+        return f"{c['aniversario_dia']} de {MESES[c['aniversario_mes'] - 1]}"
+
+    def aniversariantes(self, dias=7, data=None):
+        """Clientes que fazem aniversário de hoje até `dias` dias à frente (29/02 vira 28/02 fora do bissexto)."""
+        base = datetime.date.fromisoformat(data or hoje())
+        lista = []
+        for c in self.repo.com_aniversario():
+            for ano in (base.year, base.year + 1):
+                dia = c["aniversario_dia"]
+                if c["aniversario_mes"] == 2 and dia == 29:
+                    try:
+                        datetime.date(ano, 2, 29)
+                    except ValueError:
+                        dia = 28
+                quando = datetime.date(ano, c["aniversario_mes"], dia)
+                if 0 <= (quando - base).days <= dias:
+                    lista.append({**dict(c), "data": quando.isoformat(), "em_dias": (quando - base).days})
+                    break
+        return sorted(lista, key=lambda c: (c["em_dias"], c["nome"]))
 
     def cadastrar(self, d):
         cid = self.repo.inserir(self._limpar(d))
@@ -93,6 +138,50 @@ class EncomendaService:
                 self.repo.inserir_item(eid, receita_id, qtd, preco, custo)
         return eid
 
+    # Alerta de estoque: insumos que não dão para produzir a encomenda
+    def _necessidade(self, itens):
+        """{insumo_id: quantidade na unidade base} para produzir os itens [(receita_id, porções), ...]."""
+        total = {}
+        for receita_id, porcoes in itens:
+            if not receita_id or not porcoes or porcoes <= 0:
+                continue
+            r = self.receitas.obter(receita_id)
+            for it in self.receitas.repo.itens(receita_id):
+                total[it["insumo_id"]] = total.get(it["insumo_id"], 0) + it["quantidade"] * porcoes / r["rendimento"]
+        return total
+
+    def faltas_estoque(self, itens, data_entrega=None, ignorar_id=None):
+        """Compara o necessário para os itens com o estoque livre: disponível (lotes que ainda estarão na
+        validade na data de entrega) menos o que outras encomendas em aberto, ainda não produzidas, vão usar."""
+        necessario = self._necessidade(itens)
+        if not necessario:
+            return []
+        comprometido = self._necessidade([(i["receita_id"], i["quantidade"])
+                                          for i in self.repo.itens_sem_baixa(ignorar_id)])
+        data = max(hoje(), data_entrega or hoje())
+        estoque = self.receitas.estoque
+        faltas = []
+        for insumo_id, qtd in necessario.items():
+            insumo = estoque.obter(insumo_id)
+            disponivel = estoque.disponivel(insumo_id, data)
+            reservado = comprometido.get(insumo_id, 0)
+            livre = max(disponivel - reservado, 0)
+            if livre + 1e-9 < qtd:
+                faltas.append({"insumo_id": insumo_id, "nome": rotulo_insumo(insumo),
+                               "unidade": insumo["unidade_base"], "necessario": qtd, "disponivel": disponivel,
+                               "comprometido": reservado, "falta": qtd - livre})
+        return sorted(faltas, key=lambda f: f["nome"])
+
+    @staticmethod
+    def texto_faltas(faltas):
+        linhas = []
+        for f in faltas:
+            reserva = (f", {f['comprometido']:g} já reservado(s) para outras encomendas"
+                       if f["comprometido"] > 1e-9 else "")
+            linhas.append(f"{f['nome']}: precisa {f['necessario']:g} {f['unidade']}, há {f['disponivel']:g}"
+                          f"{reserva}. Faltam {f['falta']:g} {f['unidade']}")
+        return "\n• ".join(linhas)
+
     def obter(self, encomenda_id):
         e = self.repo.buscar(encomenda_id)
         if not e:
@@ -101,7 +190,12 @@ class EncomendaService:
 
     def detalhes(self, encomenda_id):
         e = self.obter(encomenda_id)
-        return {"encomenda": e, "itens": self.repo.itens(encomenda_id),
+        itens = self.repo.itens(encomenda_id)
+        faltas = []
+        if not e["estoque_baixado"] and e["status"] not in ("Cancelado", "Entregue"):
+            faltas = self.faltas_estoque([(i["receita_id"], i["quantidade"]) for i in itens],
+                                         e["data_entrega_prevista"], ignorar_id=encomenda_id)
+        return {"encomenda": e, "itens": itens, "faltas": faltas,
                 "pagamentos": self.repo.pagamentos(encomenda_id),
                 "saldo_devedor": e["valor_total_centavos"] - e["valor_pago_centavos"]}
 
