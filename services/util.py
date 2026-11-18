@@ -2,6 +2,7 @@
 import datetime
 import re
 import unicodedata
+from decimal import ROUND_HALF_UP, Decimal
 
 
 class RegraNegocio(Exception):
@@ -57,7 +58,8 @@ def centavos(valor, campo="valor", permitir_vazio=False):
 def reais(centavos_valor):
     if centavos_valor is None:
         return "—"
-    v = centavos_valor / 100
+    # Arredondamento comercial (meio para cima): R$ 0,845 -> R$ 0,85. O float puro daria R$ 0,84.
+    v = (Decimal(repr(round(centavos_valor, 6))) / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     s = f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"R$ {s}"
 

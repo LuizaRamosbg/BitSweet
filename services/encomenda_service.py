@@ -128,7 +128,7 @@ class EncomendaService:
         for receita_id, qtd in agrupado.items():
             calc = self.receitas.calcular(receita_id)
             preco = int(calc["preco_venda"])
-            custo = int(round(calc["custo_porcao"]))
+            custo = calc["custo_porcao"]          # sem arredondar: 10 × R$ 0,845 = R$ 8,45 (e não R$ 8,40)
             linhas.append((receita_id, qtd, preco, custo))
             total += round(qtd * preco)
 

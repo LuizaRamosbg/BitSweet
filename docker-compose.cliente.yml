@@ -1,0 +1,39 @@
+# BitSweet para o computador da doceria: usa a imagem publicada no GitHub e se atualiza sozinho.
+#
+#   docker compose -f docker-compose.cliente.yml up -d
+#
+# - Os dados ficam em ./data (banco e backups); a atualização não mexe neles.
+# - Toda madrugada (04:00) o atualizador verifica se há versão nova. Se houver, faz backup
+#   do banco em ./data/backups, baixa a imagem nova e reinicia o BitSweet.
+# - Canal: BITSWEET_CANAL=latest (cada push na main, padrão) ou stable (só versões com tag v*).
+#   Ex.: crie um arquivo .env ao lado deste com a linha  BITSWEET_CANAL=stable
+services:
+  web:
+    image: ghcr.io/luizaramosbg/bitsweet:${BITSWEET_CANAL:-latest}
+    container_name: bitsweet
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - BITSWEET_DB_PATH=/app/data/bitsweet.db
+      - HOST=0.0.0.0
+      - FLASK_DEBUG=0
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+      - com.centurylinklabs.watchtower.lifecycle.pre-update=python -m database.backup
+
+  atualizador:
+    # Fork mantido do Watchtower (o projeto original foi arquivado e não funciona no Docker 29+).
+    image: nickfedor/watchtower:latest
+    container_name: bitsweet-atualizador
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=America/Sao_Paulo
+      - WATCHTOWER_LABEL_ENABLE=true        # só atualiza o BitSweet, nenhum outro contêiner
+      - WATCHTOWER_LIFECYCLE_HOOKS=true     # roda o backup antes de atualizar
+      - WATCHTOWER_CLEANUP=true             # apaga a imagem antiga depois
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *     # todo dia às 04:00
+    restart: unless-stopped

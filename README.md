@@ -3,6 +3,9 @@
 Sistema de gestão para doceria: estoque, fichas técnicas, precificação, encomendas e relatórios.
 
 ## Como rodar
+**Jeito mais fácil (launcher):** no Windows, dê dois cliques em **`Iniciar BitSweet.bat`**; no Linux/macOS, rode `./iniciar_bitsweet.sh`. O launcher (`launcher.py`, só precisa do Python 3 instalado) cria o ambiente `.venv` e instala as dependências na primeira vez, escolhe uma porta livre (5000 ou a próxima), inicia o servidor e abre o navegador. Se o BitSweet já estiver aberto, ele só abre o navegador. Para encerrar, feche a janela.
+
+**Manual:**
 ```bash
 pip install -r requirements.txt
 python app.py        # ou: python main.py
@@ -16,6 +19,19 @@ Na primeira execução é criado o `bitsweet.db`; se existir o `doceria.db` do a
 docker compose up --build
 ```
 O banco fica em `./data/bitsweet.db` (variável `BITSWEET_DB_PATH`).
+
+### Atualização automática (computador da doceria)
+A cada push na `main`, o GitHub Actions (`.github/workflows/docker-publish.yml`) roda os testes e, se passarem, publica a imagem em `ghcr.io/luizaramosbg/bitsweet:latest`. Uma tag `v1.2.3` publica também `:1.2.3` e `:stable`.
+
+No computador da doceria, use o compose do cliente (precisa só deste arquivo, sem o código):
+```bash
+docker compose -f docker-compose.cliente.yml up -d
+```
+Ele sobe o BitSweet e um atualizador (fork mantido do Watchtower) que, todo dia às 04:00, verifica se há imagem nova. Se houver, faz backup do banco em `./data/backups/` (mantém os 10 últimos, via `python -m database.backup`), troca a imagem e reinicia o sistema. Os dados em `./data` nunca são apagados.
+
+- Para receber só versões marcadas, crie um `.env` ao lado do compose com `BITSWEET_CANAL=stable`.
+- Na primeira publicação, deixe o pacote público no GitHub (Packages › bitsweet › Package settings › Change visibility) ou faça `docker login ghcr.io` no computador da doceria com um token que tenha `read:packages`.
+- O `docker-compose.yml` continua sendo o de desenvolvimento (monta a imagem a partir do código local).
 
 ## Testes
 ```bash

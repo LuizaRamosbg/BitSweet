@@ -13,3 +13,12 @@ build
 tests
 doceria.db
 .bitsweet_secret_key
+
+# Dados locais e ambiente: nunca entram na imagem
+*.db
+*.db-journal
+data/
+.venv/
+venv/
+.github/
+.pytest_cache/

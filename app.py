@@ -329,7 +329,7 @@ def _form_receita(receita_id=None):
     if request.method == "POST":
         f = request.form
         dados = {"nome": f.get("nome"),
-                 "rendimento": numero(f.get("rendimento"), "rendimento", 0),
+                 "rendimento": numero(f.get("rendimento"), "rendimento"),   # > 0 é validado no serviço
                  "unidade_rendimento": f.get("unidade_rendimento"),
                  "margem_lucro": numero(f.get("margem_lucro") or "100", "margem de lucro", 0),
                  "cmv_alvo": numero(f.get("cmv_alvo") or "35", "CMV alvo", 0),
